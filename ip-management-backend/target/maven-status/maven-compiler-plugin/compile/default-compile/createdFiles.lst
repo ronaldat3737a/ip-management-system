@@ -2,6 +2,7 @@ com\example\ipmanagement\IpManagementApplication.class
 com\example\ipmanagement\model\ApplicationFile.class
 com\example\ipmanagement\repository\ApplicationRepository.class
 com\example\ipmanagement\repository\UserRepository.class
+com\example\ipmanagement\controller\AuthController$LoginRequest.class
 com\example\ipmanagement\service\ApplicationService.class
 com\example\ipmanagement\controller\ApplicationController.class
 com\example\ipmanagement\repository\ApplicationFileRepository.class
@@ -12,4 +13,5 @@ com\example\ipmanagement\model\Application.class
 com\example\ipmanagement\WebConfig.class
 com\example\ipmanagement\service\AuthService.class
 com\example\ipmanagement\service\FileStorageService.class
+com\example\ipmanagement\config\SecurityConfig.class
 com\example\ipmanagement\controller\AuthController.class

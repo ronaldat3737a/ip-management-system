@@ -15,9 +15,11 @@ public class WebConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**") // Apply to all endpoints under /api
-                        .allowedOrigins("http://localhost:3000") // Allow frontend origin
-                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
+                registry.addMapping("/api/**")
+                        .allowedOrigins("http://localhost:3000")
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                        .allowCredentials(true)
+                        .allowedHeaders("*");
             }
         };
     }

@@ -20,7 +20,7 @@ public class User {
     private String password;
 
     @Column(nullable = false)
-    private String role; // e.g., "USER", "REVIEWER", "ADMIN"
+    private String role; // "USER" hoặc "REVIEWER"
 
     @OneToMany(mappedBy = "submittedBy")
     private Set<Application> applications;

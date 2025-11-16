@@ -42,15 +42,14 @@ public class ApplicationService {
         application.setDescription(description);
         application.setSubmittedBy(user);
         application.setStatus("PENDING");
-        
+        application.setUuid(UUID.randomUUID());
+
         // Save application first to get an ID
         Application savedApplication = applicationRepository.save(application);
-        
-        UUID applicationUuid = UUID.randomUUID(); // To name the folder
 
         Set<ApplicationFile> applicationFiles = new HashSet<>();
         for (MultipartFile file : files) {
-            String filePath = fileStorageService.store(file, applicationUuid);
+            String filePath = fileStorageService.store(file, savedApplication.getUuid());
             ApplicationFile appFile = new ApplicationFile();
             appFile.setFileName(file.getOriginalFilename());
             appFile.setFileType(file.getContentType());

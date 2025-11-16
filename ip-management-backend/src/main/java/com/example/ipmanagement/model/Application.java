@@ -3,6 +3,7 @@ package com.example.ipmanagement.model;
 import lombok.Data;
 import jakarta.persistence.*;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "applications")
@@ -12,6 +13,9 @@ public class Application {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(unique = true, nullable = false)
+    private UUID uuid;
 
     private String title;
 

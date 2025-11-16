@@ -2,6 +2,7 @@ package com.example.ipmanagement.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,7 +20,7 @@ public class FileStorageService {
                 Files.createDirectory(root);
             }
         } catch (IOException e) {
-            throw new RuntimeException("Could not initialize folder for upload!");
+            throw new RuntimeException("Could not initialize folder for upload!", e);
         }
     }
 
@@ -30,11 +31,12 @@ public class FileStorageService {
         }
 
         String filename = file.getOriginalFilename();
-        Files.copy(file.getInputStream(), applicationPath.resolve(filename));
-        return applicationPath.resolve(filename).toString();
+        Path filePath = applicationPath.resolve(filename);
+        Files.copy(file.getInputStream(), filePath);
+        return filePath.toString();
     }
 
-    public Path load(String filename) {
-        return root.resolve(filename);
+    public Path load(UUID applicationId, String filename) {
+        return root.resolve(applicationId.toString()).resolve(filename);
     }
 }

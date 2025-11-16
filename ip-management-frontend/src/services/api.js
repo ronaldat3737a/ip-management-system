@@ -1,39 +1,48 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_URL = '/api'; // Because of the proxy in package.json
+const BASE_URL = "http://localhost:8080/api";
 
-// Authentication
-export const login = (username, password) => {
-  return axios.post(`${API_URL}/auth/login`, { username, password });
-};
+// -------------------- AUTH --------------------
 
-export const register = (userData) => {
-  return axios.post(`${API_URL}/auth/register`, userData);
-};
+// Đăng ký user
+export const register = (data) => axios.post(`${BASE_URL}/auth/register`, data);
 
-// Applications
-export const submitApplication = (formData) => {
-  return axios.post(`${API_URL}/applications`, formData, {
+// Đăng nhập user
+export const login = (username, password) => axios.post(`${BASE_URL}/auth/login`, { username, password });
+
+// -------------------- APPLICATIONS --------------------
+
+// Lấy tất cả applications
+export const getAllApplications = () => axios.get(`${BASE_URL}/applications`);
+
+// Lấy chi tiết 1 application theo id
+export const getApplicationById = (id) =>
+  axios.get(`${BASE_URL}/applications/${id}`);
+
+// Tạo application (có thể upload file)
+export const createApplication = (formData) =>
+  axios.post(`${BASE_URL}/applications`, formData, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      "Content-Type": "multipart/form-data",
     },
   });
-};
 
-export const getAllApplications = () => {
-  return axios.get(`${API_URL}/applications`);
-};
+// Cập nhật trạng thái application
+export const updateApplicationStatus = (id, status) =>
+  axios.patch(`${BASE_URL}/applications/${id}/status`, { status });
 
-export const getApplicationById = (id) => {
-    return axios.get(`${API_URL}/applications/${id}`);
-};
+// Download file
+export const downloadFile = async (fileId, fileName) => {
+  const response = await axios.get(`${BASE_URL}/applications/files/${fileId}`, {
+    responseType: "blob", // quan trọng để nhận file
+  });
 
-export const updateApplicationStatus = (id, status) => {
-  return axios.patch(`${API_URL}/applications/${id}/status`, { status });
-};
-
-export const downloadFile = (fileId) => {
-    return axios.get(`${API_URL}/applications/files/${fileId}`, {
-        responseType: 'blob', // Important for file downloads
-    });
+  // Tạo link tải file
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", fileName || "file");
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 };
