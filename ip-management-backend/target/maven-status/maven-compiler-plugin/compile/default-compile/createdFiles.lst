@@ -1,0 +1,15 @@
+com\example\ipmanagement\IpManagementApplication.class
+com\example\ipmanagement\model\ApplicationFile.class
+com\example\ipmanagement\repository\ApplicationRepository.class
+com\example\ipmanagement\repository\UserRepository.class
+com\example\ipmanagement\service\ApplicationService.class
+com\example\ipmanagement\controller\ApplicationController.class
+com\example\ipmanagement\repository\ApplicationFileRepository.class
+com\example\ipmanagement\WebConfig$1.class
+com\example\ipmanagement\controller\dto\ApplicationRequestDto.class
+com\example\ipmanagement\model\User.class
+com\example\ipmanagement\model\Application.class
+com\example\ipmanagement\WebConfig.class
+com\example\ipmanagement\service\AuthService.class
+com\example\ipmanagement\service\FileStorageService.class
+com\example\ipmanagement\controller\AuthController.class
