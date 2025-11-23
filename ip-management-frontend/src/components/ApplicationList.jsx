@@ -48,7 +48,7 @@ const ApplicationList = () => {
                     <tr key={app.id}>
                         <td>{app.id}</td>
                         <td>{app.title}</td>
-                        <td>{app.submittedBy.username}</td>
+                        <td>{app.submittedByUsername}</td>
                         <td>{app.status}</td>
                         <td><Link to={`/applications/${app.id}`}>View Details</Link></td>
                     </tr>

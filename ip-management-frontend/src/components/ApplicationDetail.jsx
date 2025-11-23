@@ -67,14 +67,7 @@ const ApplicationDetail = () => {
 
   const handleFileDownload = async (file) => {
     try {
-        const response = await downloadFile(file.id);
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', file.fileName);
-        document.body.appendChild(link);
-        link.click();
-        link.parentNode.removeChild(link);
+        await downloadFile(file.id, file.fileName);
     } catch (err) {
         setError(`Failed to download file ${file.fileName}.`);
         console.error(err);
@@ -93,7 +86,7 @@ const ApplicationDetail = () => {
           <p><strong>ID:</strong> {application.id}</p>
           <p><strong>Title:</strong> {application.title}</p>
           <p><strong>Description:</strong> {application.description}</p>
-          <p><strong>Submitted By:</strong> {application.submittedBy.username}</p>
+          <p><strong>Submitted By:</strong> {application.submittedByUsername}</p>
           <p><strong>Current Status:</strong> <span style={{ fontWeight: 'bold', color: status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'orange' }}>{status}</span></p>
       </div>
 

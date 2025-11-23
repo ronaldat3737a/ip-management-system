@@ -1,3 +1,5 @@
+package com.example.ipmanagement.service;
+
 import com.example.ipmanagement.controller.dto.ApplicationDetailDTO;
 import com.example.ipmanagement.controller.dto.ApplicationListDTO;
 import com.example.ipmanagement.controller.dto.FileDTO;
@@ -47,13 +49,12 @@ public class ApplicationService {
         application.setStatus("PENDING");
         application.setUuid(UUID.randomUUID());
 
-        // Save application first to get an ID
         Application savedApplication = applicationRepository.save(application);
 
         Set<ApplicationFile> applicationFiles = new HashSet<>();
         if (files != null) {
             for (MultipartFile file : files) {
-                if (!file.isEmpty()) {
+                if (file != null && !file.isEmpty()) {
                     String filePath = fileStorageService.store(file, savedApplication.getUuid());
                     ApplicationFile appFile = new ApplicationFile();
                     appFile.setFileName(file.getOriginalFilename());
@@ -66,7 +67,7 @@ public class ApplicationService {
         }
 
         savedApplication.setFiles(applicationFiles);
-        return savedApplication;
+        return applicationRepository.save(savedApplication);
     }
 
     public List<ApplicationListDTO> getAllApplications() {
@@ -77,24 +78,25 @@ public class ApplicationService {
 
     public ApplicationDetailDTO getApplicationByIdAsDTO(Long applicationId) {
         Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
+                .orElseThrow(() -> new RuntimeException("Application not found with id: " + applicationId));
         return mapToApplicationDetailDTO(application);
     }
-    
+
     public ApplicationDetailDTO updateStatus(Long applicationId, String status) {
         Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
+                .orElseThrow(() -> new RuntimeException("Application not found with id: " + applicationId));
         application.setStatus(status);
         Application updatedApplication = applicationRepository.save(application);
         return mapToApplicationDetailDTO(updatedApplication);
     }
 
     private ApplicationListDTO mapToApplicationListDTO(Application app) {
+        String username = (app.getSubmittedBy() != null) ? app.getSubmittedBy().getUsername() : "N/A";
         return new ApplicationListDTO(
                 app.getId(),
                 app.getTitle(),
                 app.getStatus(),
-                app.getSubmittedBy() != null ? app.getSubmittedBy().getUsername() : "N/A"
+                username
         );
     }
 
@@ -104,9 +106,10 @@ public class ApplicationService {
         dto.setTitle(application.getTitle());
         dto.setDescription(application.getDescription());
         dto.setStatus(application.getStatus());
-        dto.setSubmittedByUsername(application.getSubmittedBy() != null ? application.getSubmittedBy().getUsername() : "N/A");
+        String username = (application.getSubmittedBy() != null) ? application.getSubmittedBy().getUsername() : "N/A";
+        dto.setSubmittedByUsername(username);
 
-        List<FileDTO> fileDTOs = application.getFiles() != null ?
+        List<FileDTO> fileDTOs = (application.getFiles() != null) ?
                 application.getFiles().stream()
                         .map(file -> new FileDTO(file.getId(), file.getFileName()))
                         .collect(Collectors.toList()) :
