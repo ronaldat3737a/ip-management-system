@@ -1,12 +1,16 @@
 package com.example.ipmanagement.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "application_files")
-@Data
+@Getter
+@Setter
+@ToString(exclude = "application")
 public class ApplicationFile {
 
     @Id

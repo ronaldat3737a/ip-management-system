@@ -3,7 +3,6 @@ package com.example.ipmanagement.controller;
 import com.example.ipmanagement.controller.dto.ApplicationDetailDTO;
 import com.example.ipmanagement.controller.dto.ApplicationListDTO;
 import com.example.ipmanagement.controller.dto.ApplicationRequestDto;
-import com.example.ipmanagement.model.Application;
 import com.example.ipmanagement.model.ApplicationFile;
 import com.example.ipmanagement.repository.ApplicationFileRepository;
 import com.example.ipmanagement.service.ApplicationService;
@@ -36,11 +35,13 @@ public class ApplicationController {
     @PostMapping
     public ResponseEntity<?> submitApplication(@ModelAttribute ApplicationRequestDto request) {
         try {
-            Application application = applicationService.createApplication(
+            ApplicationDetailDTO application = applicationService.createApplication(
                     request.getTitle(), request.getDescription(), request.getUserId(), request.getFiles()
             );
             return ResponseEntity.ok(application);
         } catch (Exception e) {
+            // Log the stack trace to see the actual error on the server side
+            e.printStackTrace();
             return ResponseEntity.badRequest().body("Failed to submit application: " + e.getMessage());
         }
     }
@@ -60,6 +61,8 @@ public class ApplicationController {
         ApplicationFile fileInfo = applicationFileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found with id: " + fileId));
 
+        // This assumes the file path stored is just the name, and the UUID is in the Application
+        // This is a potential bug if fileInfo.getApplication() is lazy loaded and not in a transaction
         Path filePath = fileStorageService.load(fileInfo.getApplication().getUuid(), fileInfo.getFileName());
         Resource resource = new UrlResource(filePath.toUri());
 

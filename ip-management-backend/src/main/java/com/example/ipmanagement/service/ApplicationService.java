@@ -10,6 +10,7 @@ import com.example.ipmanagement.repository.ApplicationFileRepository;
 import com.example.ipmanagement.repository.ApplicationRepository;
 import com.example.ipmanagement.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -38,7 +39,8 @@ public class ApplicationService {
         this.fileStorageService = fileStorageService;
     }
 
-    public Application createApplication(String title, String description, Long userId, List<MultipartFile> files) throws IOException {
+    @Transactional
+    public ApplicationDetailDTO createApplication(String title, String description, Long userId, List<MultipartFile> files) throws IOException {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -67,26 +69,36 @@ public class ApplicationService {
         }
 
         savedApplication.setFiles(applicationFiles);
-        return applicationRepository.save(savedApplication);
+        Application finalApplication = applicationRepository.save(savedApplication);
+        
+        // Return the DTO to prevent serialization issues in the controller
+        return mapToApplicationDetailDTO(finalApplication);
     }
 
+    @Transactional(readOnly = true)
     public List<ApplicationListDTO> getAllApplications() {
         return applicationRepository.findAll().stream()
                 .map(this::mapToApplicationListDTO)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public ApplicationDetailDTO getApplicationByIdAsDTO(Long applicationId) {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found with id: " + applicationId));
+        // Trigger lazy loading before mapping
+        application.getFiles().size();
         return mapToApplicationDetailDTO(application);
     }
 
+    @Transactional
     public ApplicationDetailDTO updateStatus(Long applicationId, String status) {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found with id: " + applicationId));
         application.setStatus(status);
         Application updatedApplication = applicationRepository.save(application);
+        // Trigger lazy loading before mapping
+        updatedApplication.getFiles().size();
         return mapToApplicationDetailDTO(updatedApplication);
     }
 

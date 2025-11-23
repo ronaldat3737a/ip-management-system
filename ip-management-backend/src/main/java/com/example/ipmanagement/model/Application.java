@@ -2,14 +2,18 @@ package com.example.ipmanagement.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import jakarta.persistence.*;
 import java.util.Set;
 import java.util.UUID;
 
 @Entity
 @Table(name = "applications")
-@Data
+@Getter
+@Setter
+@ToString(exclude = {"submittedBy", "files"})
 public class Application {
 
     @Id
@@ -30,7 +34,7 @@ public class Application {
     @JsonBackReference
     private User submittedBy;
 
-    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private Set<ApplicationFile> files;
 }
