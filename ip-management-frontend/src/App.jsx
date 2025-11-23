@@ -41,14 +41,17 @@ function App() {
         <Route element={<ProtectedRoute user={user} allowedRoles={['USER']} />}>
           <Route path="/dashboard" element={<Dashboard user={user} />} />
           <Route path="/submit" element={<ApplicationForm user={user} />} />
-          {/* This route can be for users to see their own applications */}
           <Route path="/applications/user" element={<ApplicationList user={user} />} />
         </Route>
 
         {/* Protected Routes for REVIEWER role */}
         <Route element={<ProtectedRoute user={user} allowedRoles={["REVIEWER"]} />}>
           <Route path="/applications" element={<ApplicationList user={user} />} />
-          <Route path="/applications/:id" element={<ApplicationDetail />} />
+        </Route>
+
+        {/* Protected Routes for BOTH roles */}
+        <Route element={<ProtectedRoute user={user} allowedRoles={["USER", "REVIEWER"]} />}>
+          <Route path="/applications/:id" element={<ApplicationDetail user={user} />} />
         </Route>
 
         {/* Default Route */}

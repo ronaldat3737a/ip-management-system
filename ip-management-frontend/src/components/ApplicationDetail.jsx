@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom';
 import { getApplicationById, updateApplicationStatus, downloadFile } from '../services/api';
 import '../styles/Buttons.css';
 
@@ -30,19 +30,27 @@ const fileListItemStyle = {
 };
 
 
-const ApplicationDetail = () => {
+const ApplicationDetail = ({ user }) => {
   const { id } = useParams();
   const [application, setApplication] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [status, setStatus] = useState('');
 
   useEffect(() => {
     const fetchApplication = async () => {
       try {
         const response = await getApplicationById(id);
-        setApplication(response.data);
-        setStatus(response.data.status);
+        const fetchedApp = response.data;
+        setApplication(fetchedApp);
+        setStatus(fetchedApp.status);
+
+        // Authorization check
+        if (user.role === 'REVIEWER' || (user.role === 'USER' && fetchedApp.submittedByUsername === user.username)) {
+            setIsAuthorized(true);
+        }
+
       } catch (err) {
         setError('Failed to fetch application details.');
         console.error(err);
@@ -51,8 +59,10 @@ const ApplicationDetail = () => {
       }
     };
 
-    fetchApplication();
-  }, [id]);
+    if (user) {
+        fetchApplication();
+    }
+  }, [id, user]);
 
   const handleStatusUpdate = async (newStatus) => {
     try {
@@ -76,7 +86,14 @@ const ApplicationDetail = () => {
 
   if (loading) return <p>Loading application details...</p>;
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
+  
+  if (!isAuthorized && !loading) {
+    return <p style={{ color: 'red' }}>You are not authorized to view this application.</p>;
+  }
+
   if (!application) return <p>No application found.</p>;
+
+  const isReviewer = user.role === 'REVIEWER';
 
   return (
     <div style={detailStyle}>
@@ -90,29 +107,33 @@ const ApplicationDetail = () => {
           <p><strong>Current Status:</strong> <span style={{ fontWeight: 'bold', color: status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'orange' }}>{status}</span></p>
       </div>
 
-      <div style={sectionStyle}>
-        <h3>Attached Files</h3>
-        <ul style={fileListStyle}>
-          {application.files.map((file) => (
-            <li key={file.id} style={fileListItemStyle}>
-              <span>{file.fileName}</span>
-              <button onClick={() => handleFileDownload(file)}>Download</button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div style={sectionStyle}>
-        <h3>Reviewer Actions</h3>
-        <div>
-          <button onClick={() => handleStatusUpdate('APPROVED')} disabled={status === 'APPROVED'}>
-            Approve
-          </button>
-          <button onClick={() => handleStatusUpdate('REJECTED')} disabled={status === 'REJECTED'} style={{ backgroundColor: '#dc3545' }}>
-            Reject
-          </button>
+      {application.files && application.files.length > 0 && (
+        <div style={sectionStyle}>
+          <h3>Attached Files</h3>
+          <ul style={fileListStyle}>
+            {application.files.map((file) => (
+              <li key={file.id} style={fileListItemStyle}>
+                <span>{file.fileName}</span>
+                <button onClick={() => handleFileDownload(file)}>Download</button>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+      )}
+
+      {isReviewer && (
+        <div style={sectionStyle}>
+          <h3>Reviewer Actions</h3>
+          <div>
+            <button onClick={() => handleStatusUpdate('APPROVED')} disabled={status === 'APPROVED'}>
+              Approve
+            </button>
+            <button onClick={() => handleStatusUpdate('REJECTED')} disabled={status === 'REJECTED'} style={{ backgroundColor: '#dc3545' }}>
+              Reject
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
