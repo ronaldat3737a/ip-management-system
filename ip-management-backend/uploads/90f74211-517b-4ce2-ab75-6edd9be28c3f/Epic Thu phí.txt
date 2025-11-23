@@ -1,0 +1,52 @@
+Epic: Thu phí
+Nhóm 1 — Cấu hình phí & Quỹ đóng góp (Ban quản trị)
+
+As a Ban quản trị, I want to tạo các loại phí cố định với tên, đơn giá và kỳ hạn, so that hệ thống có thể tự động sinh hóa đơn.
+
+As a Ban quản trị, I want to cập nhật hoặc vô hiệu hóa loại phí, so that tôi có thể chỉnh sửa sai sót hoặc ngừng sử dụng mà không mất dữ liệu lịch sử.
+
+As a Ban quản trị, I want to tạo các đợt quyên góp tự nguyện với chi tiết và thời gian, so that cư dân có thể tham gia đóng góp cho quỹ cộng đồng.
+
+As a Ban quản trị, I want to quản lý trạng thái của quỹ (mở, đóng, chỉnh sửa), so that tôi có thể tổ chức và công khai minh bạch các đợt đóng góp.
+
+Nhóm 2 — Khởi tạo & Quản lý hóa đơn
+
+As a Ban quản trị, I want to sinh hóa đơn tự động dựa trên dữ liệu hộ gia đình và biểu phí, so that tôi tiết kiệm thời gian và đảm bảo tính chính xác.
+
+As a Ban quản trị, I want to tạo hoặc điều chỉnh hóa đơn thủ công cho một số hộ, so that tôi có thể xử lý những trường hợp đặc biệt.
+
+As a Ban quản trị, I want to xem xét và phê duyệt hóa đơn trước khi gửi, so that tránh được sai sót khi cư dân nhận.
+
+Nhóm 3 — Tra cứu & Nhắc nợ
+
+As a Resident, I want to tra cứu hóa đơn bằng mã hộ và CCCD, so that tôi nắm được các khoản cần thanh toán.
+
+As a System, I want to gửi nhắc nhở tự động trước và sau hạn thanh toán, so that cư dân không quên đóng phí đúng hạn.
+
+As a Ban quản trị, I want to xem và lọc danh sách các hộ còn nợ, so that tôi dễ dàng theo dõi và xử lý.
+
+Nhóm 4 — Thanh toán & Biên lai
+
+As a Resident, I want to thanh toán hóa đơn online qua ngân hàng hoặc ví điện tử, so that tôi có thể trả nhanh chóng và nhận biên lai điện tử.
+
+As a Ban quản trị staff, I want to ghi nhận các khoản cư dân nộp trực tiếp bằng tiền mặt, so that hệ thống luôn cập nhật đầy đủ giao dịch.
+
+As a Resident, I want to đóng góp tự nguyện cho quỹ cộng đồng online hoặc offline, so that tôi có thể dễ dàng tham gia các hoạt động chung.
+
+As a Ban quản trị, I want to xử lý các giao dịch trùng lặp hoặc lỗi với phương án hoàn tiền, so that việc thanh toán của cư dân luôn chính xác và công bằng.
+
+Nhóm 5 — Báo cáo & Cơ quan chức năng
+
+As a Ban quản trị, I want to tạo báo cáo tổng hợp phí và đóng góp theo kỳ, so that tôi có thể theo dõi tình hình tài chính chung.
+
+As a Cơ quan chức năng, I want to nhận báo cáo chi tiết về hóa đơn và thanh toán của các hộ, so that tôi có thể giám sát và kiểm tra.
+
+As a Cơ quan chức năng, I want to truy cập nhật ký kiểm toán của các giao dịch tài chính, so that tính minh bạch và tuân thủ được đảm bảo.
+
+Nhóm 6 — Bảo mật & Phân quyền
+
+As a Ban quản trị, I want to phân quyền vai trò cho nhân viên, so that chỉ người có thẩm quyền mới được quản lý phí và thanh toán.
+
+As a System, I want to ghi lại nhật ký kiểm toán cho mọi thao tác tài chính, so that mọi hành động đều có thể truy vết khi cần.
+
+As a System, I want to mã hóa dữ liệu cá nhân như CCCD và thông tin hộ, so that quyền riêng tư của cư dân được bảo vệ.

@@ -1,5 +1,6 @@
 package com.example.ipmanagement.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.Data;
 import jakarta.persistence.*;
 import java.util.Set;
@@ -23,5 +24,6 @@ public class User {
     private String role; // "USER" hoặc "REVIEWER"
 
     @OneToMany(mappedBy = "submittedBy")
+    @JsonManagedReference
     private Set<Application> applications;
 }

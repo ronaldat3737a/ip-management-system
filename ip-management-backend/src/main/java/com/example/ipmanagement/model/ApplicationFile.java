@@ -1,5 +1,6 @@
 package com.example.ipmanagement.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.Data;
 import jakarta.persistence.*;
 
@@ -20,5 +21,6 @@ public class ApplicationFile {
 
     @ManyToOne
     @JoinColumn(name = "application_id", nullable = false)
+    @JsonBackReference
     private Application application;
 }

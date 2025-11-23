@@ -1,5 +1,7 @@
 package com.example.ipmanagement.controller;
 
+import com.example.ipmanagement.controller.dto.ApplicationDetailDTO;
+import com.example.ipmanagement.controller.dto.ApplicationListDTO;
 import com.example.ipmanagement.controller.dto.ApplicationRequestDto;
 import com.example.ipmanagement.model.Application;
 import com.example.ipmanagement.model.ApplicationFile;
@@ -44,13 +46,13 @@ public class ApplicationController {
     }
 
     @GetMapping
-    public List<Application> getAllApplications() {
+    public List<ApplicationListDTO> getAllApplications() {
         return applicationService.getAllApplications();
     }
 
     @GetMapping("/{id}")
-    public Application getApplication(@PathVariable Long id) {
-        return applicationService.getApplicationById(id);
+    public ApplicationDetailDTO getApplication(@PathVariable Long id) {
+        return applicationService.getApplicationByIdAsDTO(id);
     }
 
     @GetMapping("/files/{fileId}")
@@ -71,13 +73,14 @@ public class ApplicationController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<ApplicationDetailDTO> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String status = body.get("status");
         try {
-            Application updated = applicationService.updateStatus(id, status);
+            ApplicationDetailDTO updated = applicationService.updateStatus(id, status);
             return ResponseEntity.ok(updated);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            // In a real app, you'd have more specific exception handling
+            throw new RuntimeException("Failed to update status", e);
         }
     }
 }

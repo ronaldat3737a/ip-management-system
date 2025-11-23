@@ -1,4 +1,5 @@
 com\example\ipmanagement\IpManagementApplication.class
+com\example\ipmanagement\controller\dto\ApplicationListDTO.class
 com\example\ipmanagement\model\ApplicationFile.class
 com\example\ipmanagement\repository\ApplicationRepository.class
 com\example\ipmanagement\repository\UserRepository.class
