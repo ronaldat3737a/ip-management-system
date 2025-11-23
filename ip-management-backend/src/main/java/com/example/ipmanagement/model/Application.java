@@ -27,6 +27,8 @@ public class Application {
 
     private String description;
 
+    private String type; // e.g., "TRADEMARK", "PATENT", "DESIGN"
+
     private String status; // e.g., "PENDING", "APPROVED", "REJECTED"
 
     @ManyToOne

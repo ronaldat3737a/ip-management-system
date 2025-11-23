@@ -13,6 +13,8 @@ import com.example.ipmanagement.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.util.StringUtils;
+
 
 import java.io.IOException;
 import java.util.Collections;
@@ -76,8 +78,14 @@ public class ApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<ApplicationListDTO> getAllApplications() {
-        return applicationRepository.findAll().stream()
+    public List<ApplicationListDTO> getAllApplications(String status) {
+        List<Application> applications;
+        if (StringUtils.hasText(status)) {
+            applications = applicationRepository.findByStatus(status);
+        } else {
+            applications = applicationRepository.findAll();
+        }
+        return applications.stream()
                 .map(this::mapToApplicationListDTO)
                 .collect(Collectors.toList());
     }

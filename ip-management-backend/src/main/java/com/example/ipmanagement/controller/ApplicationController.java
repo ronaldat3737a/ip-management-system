@@ -47,8 +47,8 @@ public class ApplicationController {
     }
 
     @GetMapping
-    public List<ApplicationListDTO> getAllApplications() {
-        return applicationService.getAllApplications();
+    public List<ApplicationListDTO> getAllApplications(@RequestParam(required = false) String status) {
+        return applicationService.getAllApplications(status);
     }
 
     @GetMapping("/user/{userId}")

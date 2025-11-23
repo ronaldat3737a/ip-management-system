@@ -7,7 +7,9 @@ import ApplicationList from "./components/ApplicationList";
 import ApplicationDetail from "./components/ApplicationDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Header from "./components/Header";
-import Dashboard from "./components/Dashboard"; // Import Dashboard
+import Dashboard from "./components/Dashboard";
+import ReviewerDashboard from "./components/ReviewerDashboard";
+import ReviewerApplicationList from "./components/ReviewerApplicationList"; // Import the new component
 import "./styles/App.css";
 
 function App() {
@@ -34,6 +36,7 @@ function App() {
     <div className="container">
       {user && <Header user={user} onLogout={handleLogout} />}
       <Routes>
+        {/* Public Routes */}
         <Route path="/login" element={<LoginForm onLogin={handleLogin} />} />
         <Route path="/register" element={<RegisterForm />} />
 
@@ -46,10 +49,18 @@ function App() {
 
         {/* Protected Routes for REVIEWER role */}
         <Route element={<ProtectedRoute user={user} allowedRoles={["REVIEWER"]} />}>
-          <Route path="/applications" element={<ApplicationList user={user} />} />
+          <Route path="/reviewer/dashboard" element={<ReviewerDashboard user={user} />} />
+          <Route 
+            path="/reviewer/pending" 
+            element={<ReviewerApplicationList user={user} title="Pending Submissions" filter={{ status: 'PENDING' }} />} 
+          />
+          <Route 
+            path="/reviewer/all" 
+            element={<ReviewerApplicationList user={user} title="All Submissions" />} 
+          />
         </Route>
 
-        {/* Protected Routes for BOTH roles */}
+        {/* Protected Routes for BOTH roles (e.g., Detail Page) */}
         <Route element={<ProtectedRoute user={user} allowedRoles={["USER", "REVIEWER"]} />}>
           <Route path="/applications/:id" element={<ApplicationDetail user={user} />} />
         </Route>
@@ -62,8 +73,8 @@ function App() {
               to={
                 user
                   ? user.role === "REVIEWER"
-                    ? "/applications"
-                    : "/dashboard" // Default for USER is now dashboard
+                    ? "/reviewer/dashboard" // Default for REVIEWER is now their dashboard
+                    : "/dashboard" // Default for USER is their dashboard
                   : "/login"
               }
             />

@@ -17,8 +17,14 @@ export const getDashboardStats = (userId) => axios.get(`${BASE_URL}/dashboard/st
 
 // -------------------- APPLICATIONS --------------------
 
-// Lấy tất cả applications
-export const getAllApplications = () => axios.get(`${BASE_URL}/applications`);
+// Lấy tất cả applications, có thể có filter
+export const getAllApplications = (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status) {
+        params.append('status', filters.status);
+    }
+    return axios.get(`${BASE_URL}/applications`, { params });
+};
 
 // Lấy tất cả applications cho một user
 export const getApplicationsByUserId = (userId) => axios.get(`${BASE_URL}/applications/user/${userId}`);
