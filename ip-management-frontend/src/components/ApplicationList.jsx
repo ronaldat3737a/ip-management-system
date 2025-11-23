@@ -2,20 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllApplications, getApplicationsByUserId } from '../services/api';
 import '../styles/Table.css';
+import '../styles/Form.css'; // Re-use styles for the back link
 
 const ApplicationList = ({ user }) => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const isReviewer = user && user.role === 'REVIEWER';
-  const pageTitle = isReviewer ? 'Review Applications' : 'My Applications';
+  const isUser = user && user.role === 'USER';
+  const pageTitle = isUser ? 'My Applications' : 'Review Applications';
 
   useEffect(() => {
     const fetchApplications = async () => {
       try {
         let response;
-        if (user && user.role === 'USER') {
+        if (isUser) {
           response = await getApplicationsByUserId(user.id);
         } else {
           // Default to reviewer view (all applications)
@@ -31,13 +32,18 @@ const ApplicationList = ({ user }) => {
     };
 
     fetchApplications();
-  }, [user]);
+  }, [user, isUser]);
 
   if (loading) return <p>Loading applications...</p>;
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
   return (
-    <div>
+    <div className="list-container">
+      {isUser && (
+        <div className="back-link-container">
+            <Link to="/dashboard" className="back-link">← Back to Dashboard</Link>
+        </div>
+      )}
       <h2>{pageTitle}</h2>
       {applications.length === 0 ? (
         <p>No applications found.</p>

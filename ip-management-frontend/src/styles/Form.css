@@ -1,7 +1,24 @@
 /* src/styles/Form.css */
-form {
+.form-container {
     max-width: 500px;
     margin: 2rem auto;
+}
+
+.back-link-container {
+    margin-bottom: 1rem;
+}
+
+.back-link {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+form {
     padding: 2rem;
     background: #fff;
     border-radius: 8px;

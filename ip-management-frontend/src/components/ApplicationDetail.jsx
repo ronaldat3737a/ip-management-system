@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getApplicationById, updateApplicationStatus, downloadFile } from '../services/api';
 import '../styles/Buttons.css';
+import '../styles/Form.css'; // Re-use for back-link styles
 
-const detailStyle = {
+const detailContainerStyle = {
     maxWidth: '800px',
     margin: '2rem auto',
+};
+
+const detailStyle = {
     padding: '2rem',
     background: '#fff',
     borderRadius: '8px',
@@ -32,6 +36,7 @@ const fileListItemStyle = {
 
 const ApplicationDetail = ({ user }) => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [application, setApplication] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -96,44 +101,51 @@ const ApplicationDetail = ({ user }) => {
   const isReviewer = user.role === 'REVIEWER';
 
   return (
-    <div style={detailStyle}>
-      <h2>Application Details</h2>
-      
-      <div style={sectionStyle}>
-          <p><strong>ID:</strong> {application.id}</p>
-          <p><strong>Title:</strong> {application.title}</p>
-          <p><strong>Description:</strong> {application.description}</p>
-          <p><strong>Submitted By:</strong> {application.submittedByUsername}</p>
-          <p><strong>Current Status:</strong> <span style={{ fontWeight: 'bold', color: status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'orange' }}>{status}</span></p>
-      </div>
-
-      {application.files && application.files.length > 0 && (
-        <div style={sectionStyle}>
-          <h3>Attached Files</h3>
-          <ul style={fileListStyle}>
-            {application.files.map((file) => (
-              <li key={file.id} style={fileListItemStyle}>
-                <span>{file.fileName}</span>
-                <button onClick={() => handleFileDownload(file)}>Download</button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {isReviewer && (
-        <div style={sectionStyle}>
-          <h3>Reviewer Actions</h3>
-          <div>
-            <button onClick={() => handleStatusUpdate('APPROVED')} disabled={status === 'APPROVED'}>
-              Approve
+    <div style={detailContainerStyle}>
+        <div className="back-link-container">
+            <button onClick={() => navigate(-1)} className="back-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                ← Back to List
             </button>
-            <button onClick={() => handleStatusUpdate('REJECTED')} disabled={status === 'REJECTED'} style={{ backgroundColor: '#dc3545' }}>
-              Reject
-            </button>
-          </div>
         </div>
-      )}
+        <div style={detailStyle}>
+            <h2>Application Details</h2>
+            
+            <div style={sectionStyle}>
+                <p><strong>ID:</strong> {application.id}</p>
+                <p><strong>Title:</strong> {application.title}</p>
+                <p><strong>Description:</strong> {application.description}</p>
+                <p><strong>Submitted By:</strong> {application.submittedByUsername}</p>
+                <p><strong>Current Status:</strong> <span style={{ fontWeight: 'bold', color: status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'orange' }}>{status}</span></p>
+            </div>
+
+            {application.files && application.files.length > 0 && (
+                <div style={sectionStyle}>
+                <h3>Attached Files</h3>
+                <ul style={fileListStyle}>
+                    {application.files.map((file) => (
+                    <li key={file.id} style={fileListItemStyle}>
+                        <span>{file.fileName}</span>
+                        <button onClick={() => handleFileDownload(file)}>Download</button>
+                    </li>
+                    ))}
+                </ul>
+                </div>
+            )}
+
+            {isReviewer && (
+                <div style={sectionStyle}>
+                <h3>Reviewer Actions</h3>
+                <div>
+                    <button onClick={() => handleStatusUpdate('APPROVED')} disabled={status === 'APPROVED'}>
+                    Approve
+                    </button>
+                    <button onClick={() => handleStatusUpdate('REJECTED')} disabled={status === 'REJECTED'} style={{ backgroundColor: '#dc3545' }}>
+                    Reject
+                    </button>
+                </div>
+                </div>
+            )}
+        </div>
     </div>
   );
 };
