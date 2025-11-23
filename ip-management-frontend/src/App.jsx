@@ -1,21 +1,43 @@
-import React, { useState } from "react";
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import LoginForm from "./components/LoginForm";
 import RegisterForm from "./components/RegisterForm";
 import ApplicationForm from "./components/ApplicationForm";
 import ApplicationList from "./components/ApplicationList";
 import ApplicationDetail from "./components/ApplicationDetail";
-import ProtectedRoute from "./components/ProtectedRoute"; // Import the new component
+import ProtectedRoute from "./components/ProtectedRoute";
+import Header from "./components/Header";
 import "./styles/App.css";
 
 function App() {
-  const [user, setUser] = useState(null); // In a real app, you'd use context or a state management library
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const handleLogin = (userData) => {
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    setUser(null);
+  };
 
   return (
     <div className="container">
-      <h1>Intellectual Property Management</h1>
+      {user ? (
+        <Header user={user} onLogout={handleLogout} />
+      ) : (
+        <h1>Intellectual Property Management</h1>
+      )}
       <Routes>
-        <Route path="/login" element={<LoginForm onLogin={setUser} />} />
+        <Route path="/login" element={<LoginForm onLogin={handleLogin} />} />
         <Route path="/register" element={<RegisterForm />} />
 
         {/* Protected Routes for any logged-in user */}

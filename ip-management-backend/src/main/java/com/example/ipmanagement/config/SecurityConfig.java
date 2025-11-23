@@ -10,11 +10,11 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf().disable()  // tắt CSRF cho dev
-            .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/api/**").permitAll() // cho phép tất cả API /api/**
-                .anyRequest().authenticated() // Yêu cầu xác thực cho các request khác
-            );
+        http.csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/api/**").permitAll()
+                        .anyRequest().authenticated()
+                );
         return http.build();
     }
 }
