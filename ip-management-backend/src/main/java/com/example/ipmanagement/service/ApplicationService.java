@@ -2,6 +2,7 @@ package com.example.ipmanagement.service;
 
 import com.example.ipmanagement.controller.dto.ApplicationDetailDTO;
 import com.example.ipmanagement.controller.dto.ApplicationListDTO;
+import com.example.ipmanagement.controller.dto.DashboardStatsDTO;
 import com.example.ipmanagement.controller.dto.FileDTO;
 import com.example.ipmanagement.model.Application;
 import com.example.ipmanagement.model.ApplicationFile;
@@ -71,7 +72,6 @@ public class ApplicationService {
         savedApplication.setFiles(applicationFiles);
         Application finalApplication = applicationRepository.save(savedApplication);
         
-        // Return the DTO to prevent serialization issues in the controller
         return mapToApplicationDetailDTO(finalApplication);
     }
 
@@ -83,10 +83,16 @@ public class ApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public List<ApplicationListDTO> getApplicationsByUserId(Long userId) {
+        return applicationRepository.findBySubmittedById(userId).stream()
+                .map(this::mapToApplicationListDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public ApplicationDetailDTO getApplicationByIdAsDTO(Long applicationId) {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found with id: " + applicationId));
-        // Trigger lazy loading before mapping
         application.getFiles().size();
         return mapToApplicationDetailDTO(application);
     }
@@ -97,9 +103,21 @@ public class ApplicationService {
                 .orElseThrow(() -> new RuntimeException("Application not found with id: " + applicationId));
         application.setStatus(status);
         Application updatedApplication = applicationRepository.save(application);
-        // Trigger lazy loading before mapping
         updatedApplication.getFiles().size();
         return mapToApplicationDetailDTO(updatedApplication);
+    }
+
+    @Transactional(readOnly = true)
+    public DashboardStatsDTO getDashboardStats(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        long total = applicationRepository.countBySubmittedBy(user);
+        long pending = applicationRepository.countByUserAndStatus(user, "PENDING");
+        long approved = applicationRepository.countByUserAndStatus(user, "APPROVED");
+        long rejected = applicationRepository.countByUserAndStatus(user, "REJECTED");
+
+        return new DashboardStatsDTO(total, pending, approved, rejected);
     }
 
     private ApplicationListDTO mapToApplicationListDTO(Application app) {

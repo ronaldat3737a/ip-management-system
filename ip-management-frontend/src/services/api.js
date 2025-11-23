@@ -10,10 +10,18 @@ export const register = (data) => axios.post(`${BASE_URL}/auth/register`, data);
 // Đăng nhập user
 export const login = (username, password) => axios.post(`${BASE_URL}/auth/login`, { username, password });
 
+// -------------------- DASHBOARD --------------------
+
+// Lấy thống kê cho dashboard
+export const getDashboardStats = (userId) => axios.get(`${BASE_URL}/dashboard/stats/${userId}`);
+
 // -------------------- APPLICATIONS --------------------
 
 // Lấy tất cả applications
 export const getAllApplications = () => axios.get(`${BASE_URL}/applications`);
+
+// Lấy tất cả applications cho một user
+export const getApplicationsByUserId = (userId) => axios.get(`${BASE_URL}/applications/user/${userId}`);
 
 // Lấy chi tiết 1 application theo id
 export const getApplicationById = (id) =>

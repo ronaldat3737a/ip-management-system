@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getAllApplications } from '../services/api';
+import { getAllApplications, getApplicationsByUserId } from '../services/api';
 import '../styles/Table.css';
 
-const ApplicationList = () => {
+const ApplicationList = ({ user }) => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const isReviewer = user && user.role === 'REVIEWER';
+  const pageTitle = isReviewer ? 'Review Applications' : 'My Applications';
 
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const response = await getAllApplications();
+        let response;
+        if (user && user.role === 'USER') {
+          response = await getApplicationsByUserId(user.id);
+        } else {
+          // Default to reviewer view (all applications)
+          response = await getAllApplications();
+        }
         setApplications(response.data);
       } catch (err) {
         setError('Failed to fetch applications.');
@@ -22,14 +31,14 @@ const ApplicationList = () => {
     };
 
     fetchApplications();
-  }, []);
+  }, [user]);
 
   if (loading) return <p>Loading applications...</p>;
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
   return (
     <div>
-      <h2>Review Applications</h2>
+      <h2>{pageTitle}</h2>
       {applications.length === 0 ? (
         <p>No applications found.</p>
       ) : (
@@ -50,6 +59,7 @@ const ApplicationList = () => {
                         <td>{app.title}</td>
                         <td>{app.submittedByUsername}</td>
                         <td>{app.status}</td>
+                        {/* Link to details is different for user vs reviewer in some systems, but same here for now */}
                         <td><Link to={`/applications/${app.id}`}>View Details</Link></td>
                     </tr>
                 ))}

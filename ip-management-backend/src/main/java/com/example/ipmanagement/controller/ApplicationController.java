@@ -51,6 +51,11 @@ public class ApplicationController {
         return applicationService.getAllApplications();
     }
 
+    @GetMapping("/user/{userId}")
+    public List<ApplicationListDTO> getApplicationsByUserId(@PathVariable Long userId) {
+        return applicationService.getApplicationsByUserId(userId);
+    }
+
     @GetMapping("/{id}")
     public ApplicationDetailDTO getApplication(@PathVariable Long id) {
         return applicationService.getApplicationByIdAsDTO(id);

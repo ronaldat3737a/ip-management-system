@@ -7,6 +7,7 @@ import ApplicationList from "./components/ApplicationList";
 import ApplicationDetail from "./components/ApplicationDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Header from "./components/Header";
+import Dashboard from "./components/Dashboard"; // Import Dashboard
 import "./styles/App.css";
 
 function App() {
@@ -31,25 +32,22 @@ function App() {
 
   return (
     <div className="container">
-      {user ? (
-        <Header user={user} onLogout={handleLogout} />
-      ) : (
-        <h1>Intellectual Property Management</h1>
-      )}
+      {user && <Header user={user} onLogout={handleLogout} />}
       <Routes>
         <Route path="/login" element={<LoginForm onLogin={handleLogin} />} />
         <Route path="/register" element={<RegisterForm />} />
 
-        {/* Protected Routes for any logged-in user */}
-        <Route element={<ProtectedRoute user={user} />}>
+        {/* Protected Routes for USER role */}
+        <Route element={<ProtectedRoute user={user} allowedRoles={['USER']} />}>
+          <Route path="/dashboard" element={<Dashboard user={user} />} />
           <Route path="/submit" element={<ApplicationForm user={user} />} />
+          {/* This route can be for users to see their own applications */}
+          <Route path="/applications/user" element={<ApplicationList user={user} />} />
         </Route>
 
-        {/* Protected Routes for REVIEWER role only */}
-        <Route
-          element={<ProtectedRoute user={user} allowedRoles={["REVIEWER"]} />}
-        >
-          <Route path="/applications" element={<ApplicationList />} />
+        {/* Protected Routes for REVIEWER role */}
+        <Route element={<ProtectedRoute user={user} allowedRoles={["REVIEWER"]} />}>
+          <Route path="/applications" element={<ApplicationList user={user} />} />
           <Route path="/applications/:id" element={<ApplicationDetail />} />
         </Route>
 
@@ -62,12 +60,15 @@ function App() {
                 user
                   ? user.role === "REVIEWER"
                     ? "/applications"
-                    : "/submit"
+                    : "/dashboard" // Default for USER is now dashboard
                   : "/login"
               }
             />
           }
         />
+        
+        {/* Fallback for any other route */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </div>
   );
