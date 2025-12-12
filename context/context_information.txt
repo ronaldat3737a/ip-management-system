@@ -1,0 +1,933 @@
+hãy sửa lại quy trình nộp đơn thành quy trình như sau hay làm thật chính xác từng quy trình: đây là một bài toán nâng cấp nghiệp vụ chuyên sâu. Việc chuyển từ một quy trình nộp đơn đơn giản (Nộp -&gt; Duyệt) sang quy trình chuẩn của Cục Sở hữu trí tuệ (theo sơ đồ và luật bạn cung cấp) đòi hỏi hệ thống phải chuyển sang mô hình State Machine (Máy trạng thái).
+
+Dưới đây là tư vấn thiết kế lại chức năng và CSDL để đáp ứng yêu cầu: "Bước trước xong mới được qua bước sau" và "Lưu trữ đúng chuẩn định nghĩa luật".
+
+1. PHÂN TÍCH QUY TRÌNH (WORKFLOW)
+Dựa trên sơ đồ ảnh bạn gửi, hệ thống không chỉ có trạng thái PENDING hay APPROVED nữa, mà hồ sơ sẽ di chuyển qua các Giai đoạn (Stages).
+
+Quy tắc bất di bất dịch: User không thể tự nhảy cóc. Hệ thống sẽ tự động mở khóa bước tiếp theo khi Admin (Chuyên viên) xác nhận hoàn thành bước hiện tại.
+
+Các giai đoạn cụ thể:
+
+Giai đoạn 0: Soạn thảo & Nộp đơn (User làm).
+
+Giai đoạn 1: Thẩm định hình thức (Admin làm).
+
+Nếu sai: Trả về yêu cầu sửa đổi -&gt; User sửa -&gt; Nộp lại.
+
+Nếu đúng: Chấp nhận đơn hợp lệ -&gt; Chuyển sang GĐ 2.
+
+Giai đoạn 2: Công bố đơn (Hệ thống/Admin làm).
+
+Giai đoạn 3: Yêu cầu thẩm định nội dung (User phải kích hoạt hoặc tự động kích hoạt tùy cấu hình).
+
+Giai đoạn 4: Thẩm định nội dung (Admin làm - Giai đoạn quan trọng nhất theo luật "Tính mới, Sáng tạo, Áp dụng CN").
+
+Đạt: Ra thông báo dự định cấp bằng.
+
+
+Không đạt: Từ chối.
+
+Giai đoạn 5: Nộp lệ phí & Cấp bằng.
+Dưới đây là thiết kế giao diện chi tiết cho User (Người nộp đơn) và Reviewer (Chuyên viên thẩm định) dựa trên 6 giai đoạn bạn đã cung cấp.
+
+I. NGUYÊN TẮC THIẾT KẾ CHUNG (UI UX PRINCIPLES)
+Progress Stepper (Thanh tiến trình): Luôn hiển thị ở đầu trang chi tiết hồ sơ để người dùng biết mình đang ở Giai đoạn nào (0 đến 5).
+
+Trạng thái màu sắc (Color Coding):
+
+🔵 Xanh dương: Đang xử lý / Chờ hệ thống (Pending).
+
+🟢 Xanh lá: Thành công / Đã duyệt / Cần hành động tích cực (Approved/Action).
+
+🔴 Đỏ: Từ chối / Lỗi (Rejected).
+
+🟠 Cam: Yêu cầu sửa đổi / Cần bổ sung (Amendment Required).
+
+Contextual Actions (Hành động theo ngữ cảnh): Nút bấm (Button) chỉ hiện ra khi đến đúng giai đoạn cần thiết.
+
+II. GIAO DIỆN CỦA USER (NGƯỜI NỘP ĐƠN)
+1. Màn hình Dashboard (Danh sách hồ sơ)
+Đây là màn hình đầu tiên User nhìn thấy sau khi đăng nhập.
+
+Bảng danh sách:
+
+Cột 1: Mã đơn (VD: SC-2023-001).
+
+Cột 2: Tên sáng chế (Link click vào chi tiết).
+
+Cột 3: Loại hình (Sáng chế / GPHI).
+
+Cột 4: Giai đoạn hiện tại (VD: Thẩm định hình thức).
+
+Cột 5: Trạng thái (Badge màu: Đang chờ duyệt, Cần sửa đổi, Đã công bố).
+
+Cột 6: Hành động nhanh (VD: Nút "Sửa đổi" nếu đang bị trả về, nút "Đóng phí" nếu đến hạn).
+
+2. Màn hình Chi tiết Hồ sơ (Quan trọng nhất)
+Đây là nơi User theo dõi luồng đi của một hồ sơ cụ thể.
+
+A. Header & Tiến trình (Stepper)
+
+Tiêu đề: Tên sáng chế + Mã đơn.
+
+Thanh Stepper (Nằm ngang):
+
+[1] Soạn thảo ✅ -> [2] TĐ Hình thức (Đang xử lý) 🔵 -> [3] Công bố ⚪ -> [4] Yêu cầu TĐND ⚪ -> [5] TĐ Nội dung ⚪ -> [6] Cấp bằng ⚪.
+
+B. Khu vực Thông báo trạng thái (Alert Box) Nằm ngay dưới Stepper, thay đổi nội dung tùy tình huống:
+
+Nếu bình thường: "Hồ sơ của bạn đang được chuyên viên thẩm định hình thức. Dự kiến phản hồi sau 30 ngày."
+
+Nếu có yêu cầu sửa (Giai đoạn 1/4): (Màu Cam) "Hồ sơ có thiếu sót. Chuyên viên yêu cầu sửa lại Bản mô tả và Hình vẽ. Hạn chót: 15/12/2023." -> Kèm nút [Cập nhật hồ sơ ngay].
+
+Nếu đến Giai đoạn 3: (Màu Xanh) "Đơn đã được công bố. Bạn cần gửi yêu cầu thẩm định nội dung để tiếp tục." -> Kèm nút [Gửi yêu cầu TĐND].
+
+Nếu đến Giai đoạn 5: "Đơn đã được chấp nhận bảo hộ. Vui lòng nộp lệ phí cấp bằng." -> Kèm nút [Thanh toán Online].
+
+C. Nội dung chính (Tabs)
+
+Tab 1: Thông tin chung: Tác giả, Chủ đơn, Phân loại IPC.
+
+Tab 2: Tài liệu đơn (Patent Details):
+
+Hiển thị các trường: Tên sáng chế, Tóm tắt, Mô tả, Yêu cầu bảo hộ (Claims).
+
+Lưu ý: Nếu trạng thái là "Cần sửa đổi", các trường này sẽ chuyển sang chế độ Editable (cho phép sửa), nếu đang chờ duyệt thì Read-only (chỉ đọc).
+
+Tab 3: Lịch sử & Trao đổi (Timeline):
+
+List dọc các sự kiện: "10/10: Nộp đơn", "12/10: Chuyên viên A tiếp nhận", "15/10: Yêu cầu sửa đổi (Lý do: Thiếu bản dịch)".
+
+III. GIAO DIỆN CỦA REVIEWER (CHUYÊN VIÊN)
+1. Màn hình "Work Queue" (Hàng chờ xử lý)
+Chuyên viên cần biết mình phải làm gì hôm nay.
+
+Bộ lọc (Filters): Lọc theo Giai đoạn (Chờ TĐ Hình thức / Chờ TĐ Nội dung).
+
+Danh sách: Tương tự User nhưng có thêm cột "Hạn xử lý" (Deadline của chuyên viên) để tránh trễ hạn luật định.
+
+2. Màn hình Thẩm định (Workspace)
+Giao diện nên chia làm 2 cột (Split View) để tiện làm việc.
+
+Cột Trái (70%): Nội dung hồ sơ
+
+Hiển thị PDF hoặc nội dung text của đơn (Mô tả, Hình vẽ, Yêu cầu bảo hộ).
+
+Tính năng Highlight: Chuyên viên có thể bôi đen đoạn văn bản bị sai và ghi chú trực tiếp (VD: "Đoạn này mô tả chưa rõ", "Yêu cầu bảo hộ quá rộng").
+
+Cột Phải (30%): Công cụ Thẩm định (Action Panel) Tùy vào giai đoạn mà Panel này hiển thị khác nhau:
+
+Tại Giai đoạn 1 (TĐ Hình thức):
+
+Checklist:
+
+[ ] Đủ tờ khai?
+
+[ ] Đủ phí nộp đơn?
+
+[ ] Hình vẽ đúng quy cách?
+
+Quyết định:
+
+[Nút Xanh] Chấp nhận đơn hợp lệ (Hệ thống tự chuyển sang GĐ 2).
+
+[Nút Cam] Yêu cầu sửa đổi -> Hiện ô nhập lý do (Gửi noti về cho User).
+
+[Nút Đỏ] Từ chối đơn (Trường hợp sai không thể sửa).
+
+Tại Giai đoạn 4 (TĐ Nội dung - Quan trọng):
+
+Checklist chuyên sâu:
+
+[ ] Có tính mới (Novelty)?
+
+[ ] Có trình độ sáng tạo (Inventive step)?
+
+[ ] Có khả năng áp dụng công nghiệp?
+
+Ô nhập kết quả tra cứu (Search Report).
+
+Quyết định:
+
+[Nút Xanh] Dự định cấp bằng (Chuyển sang GĐ 5).
+
+[Nút Cam] Thông báo thiếu sót (User phải giải trình/sửa claims).
+
+[Nút Đỏ] Từ chối cấp bằng.
+
+IV. MÔ TẢ LUỒNG TƯƠNG TÁC (SCENARIO)
+Để bạn dễ hình dung cách hệ thống phản hồi:
+
+Tình huống: Giai đoạn 1 - Sửa đổi đơn
+
+Reviewer:
+
+Mở đơn SC-001.
+
+Thấy phần "Tóm tắt" viết quá dài so với quy định.
+
+Bên cột phải, chọn hành động "Yêu cầu sửa đổi".
+
+Nhập lý do: "Bản tóm tắt vượt quá 150 từ, vui lòng viết lại."
+
+Bấm Gửi.
+
+-> Trạng thái đơn đổi thành FORMALITY_AMENDMENT_REQUIRED.
+
+User:
+
+Nhận email/thông báo.
+
+Vào hệ thống, thấy Alert Box màu Cam: "Yêu cầu sửa đổi: Bản tóm tắt quá dài...".
+
+Bấm nút [Cập nhật hồ sơ].
+
+Hệ thống mở khóa trường "Tóm tắt" để User sửa lại. Các trường khác vẫn khóa.
+
+User sửa xong, bấm [Nộp lại].
+
+-> Trạng thái đơn đổi thành PENDING (Quay lại hàng chờ của Reviewer).
+
+Reviewer:
+
+Thấy đơn SC-001 quay lại với nhãn "Đã sửa đổi".
+
+Kiểm tra lại. Thấy OK.
+
+Bấm [Chấp nhận đơn hợp lệ].
+
+-> Trạng thái đổi thành VALID_APPLICATION -> Hệ thống tự động chuyển sang Giai đoạn 2 (Công bố).
+
+Bạn có thể dùng mô tả này để vẽ wireframe hoặc mockup trên Figma. Thiết kế này đảm bảo tính chặt chẽ của quy trình pháp lý mà vẫn thân thiện với người dùng.
+2. THIẾT KẾ CƠ SỞ DỮ LIỆU (DATABASE DESIGN)
+Để lưu trữ "Giải pháp kỹ thuật" (Sản phẩm/Quy trình) và theo dõi quy trình chặt chẽ, bạn cần bổ sung/sửa đổi CSDL như sau.
+
+A. Bảng patent_types (Giữ nguyên nhưng chuẩn hóa dữ liệu)
+Dữ liệu mẫu bắt buộc phải có:
+
+Sáng chế (Bằng độc quyền sáng chế).
+
+Giải pháp hữu ích (Bằng độc quyền GPHI).
+
+B. Bảng submissions (Cập nhật)
+Thêm cột để quản lý giai đoạn hiện tại.
+
+SQL
+
+ALTER TABLE public.submissions
+ADD COLUMN current_stage VARCHAR(50) DEFAULT 'FORMALITY_EXAMINATION', -- Giai đoạn hiện tại
+ADD COLUMN is_locked BOOLEAN DEFAULT true; -- Khóa không cho User sửa khi đang thẩm định
+C. Bảng Mới: patent_details (Lưu trữ đặc thù Sáng chế/GPHI)
+Bảng này tách biệt với submissions để lưu các thông tin chuyên môn theo luật bạn trích dẫn (Mục 2 - Giải pháp kỹ thuật).
+
+SQL
+
+CREATE TABLE IF NOT EXISTS public.patent_details
+(
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    submission_id uuid NOT NULL UNIQUE, -- 1 hồ sơ có 1 chi tiết
+    
+    -- Phân loại đối tượng (Theo mục 2 của bạn)
+    object_type VARCHAR(50) NOT NULL, -- 'PRODUCT' (Sản phẩm) hoặc 'PROCESS' (Quy trình)
+    
+    -- Lĩnh vực kỹ thuật
+    ipc_class VARCHAR(50), -- Phân loại sáng chế quốc tế (IPC)
+    
+    -- Nội dung chi tiết (Có thể dùng JSONB để linh động hoặc text)
+    technical_field TEXT, -- Lĩnh vực kỹ thuật được đề cập
+    background_art TEXT, -- Tình trạng kỹ thuật
+    summary_of_invention TEXT, -- Bản tóm tắt sáng chế
+    brief_description_drawings TEXT, -- Mô tả vắn tắt hình vẽ
+    detailed_description TEXT, -- Mô tả chi tiết (Kết cấu sản phẩm hoặc Các bước quy trình)
+    claims TEXT NOT NULL, -- Yêu cầu bảo hộ (Quan trọng nhất)
+    
+    CONSTRAINT patent_details_submission_fkey FOREIGN KEY (submission_id)
+        REFERENCES public.submissions(id) ON DELETE CASCADE
+);
+D. Bảng Mới: application_timeline (Quản lý từng bước)
+Thay vì chỉ lưu log, bảng này kiểm soát tiến độ. Mỗi dòng là một bước trong quy trình.
+
+SQL
+
+CREATE TABLE IF NOT EXISTS public.application_timeline
+(
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    submission_id uuid NOT NULL,
+    stage_name VARCHAR(50) NOT NULL, -- VD: 'FORMALITY', 'PUBLICATION', 'SUBSTANTIVE', 'FEE'
+    
+    status VARCHAR(50) DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED', 'REQUIRE_AMENDMENT'
+    
+    start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    end_date TIMESTAMP,
+    
+    processor_id uuid, -- Ai là người xử lý bước này (Reviewer)
+    note text, -- Ghi chú (VD: Lỗi sai sót hình thức cần sửa)
+    
+    CONSTRAINT timeline_submission_fkey FOREIGN KEY (submission_id)
+        REFERENCES public.submissions(id) ON DELETE CASCADE
+);
+3. CHỨC NĂNG VÀ HOẠT ĐỘNG CỦA HỆ THỐNG (LOGIC BACKEND)
+Để thực hiện "người dùng phải nộp từng bước", Backend phải hoạt động như sau:
+
+Logic 1: State Machine (Máy trạng thái)
+Trong ApplicationService, bạn viết một hàm chuyển trạng thái:
+
+Java
+
+public void promoteToNextStage(UUID submissionId) {
+    // 1. Lấy hồ sơ
+    Submission sub = repo.findById(submissionId);
+    
+    // 2. Kiểm tra giai đoạn hiện tại
+    switch (sub.getCurrentStage()) {
+        case "FORMALITY":
+            // Nếu thẩm định hình thức OK -&gt; Chuyển sang Công bố
+            createTimelineEntry(sub, "PUBLICATION");
+            sub.setCurrentStage("PUBLICATION");
+            break;
+            
+        case "PUBLICATION":
+             // Tự động hoặc chờ thời gian -&gt; Chuyển sang Thẩm định nội dung
+             createTimelineEntry(sub, "SUBSTANTIVE_WAITING");
+             sub.setCurrentStage("SUBSTANTIVE_WAITING");
+             break;
+             
+        case "SUBSTANTIVE":
+             // Nếu nội dung OK -&gt; Chuyển sang đóng phí
+             createTimelineEntry(sub, "FEE_PAYMENT");
+             sub.setCurrentStage("FEE_PAYMENT");
+             break;
+    }
+    repo.save(sub);
+}
+Logic 2: Khóa giao diện (UI Blocking)
+API trả về chi tiết hồ sơ (ApplicationDetailDTO) phải kèm theo thông tin: User được phép làm gì lúc này?
+
+Ví dụ JSON trả về cho Frontend:
+
+JSON
+
+{
+  "id": "123-abc",
+  "title": "Máy gọt hoa quả tự động",
+  "currentStage": "FORMALITY_EXAMINATION",
+  "status": "REQUIRE_AMENDMENT", // Đang yêu cầu sửa đổi
+  "actionsAllowed": ["UPDATE_DOCUMENT", "RE_SUBMIT"], // Cho phép sửa và nộp lại
+  "isLocked": false // Chưa khóa hẳn
+}
+Nếu currentStage = FORMALITY và status = PENDING: User không được sửa, chỉ được xem (Read-only).
+
+Nếu currentStage = FEE_PAYMENT: User thấy nút "Thanh toán".
+
+Logic 3: Xử lý theo luật (Bảng Patent Details)
+Khi User nộp đơn (Giai đoạn 0), Frontend phải dựa vào loại đối tượng User chọn (Sản phẩm hay Quy trình) để hiển thị Form nhập liệu phù hợp:
+
+Nếu chọn Sản phẩm: Form yêu cầu nhập "Cấu tạo", "Linh kiện", "Sự liên kết các bộ phận".
+
+Nếu chọn Quy trình: Form yêu cầu nhập "Bước 1", "Bước 2", "Điều kiện thực hiện", "Phương tiện".
+
+4. KỊCH BẢN TRÌNH BÀY VỚI THẦY (MÔ HÌNH MỚI)
+Khi thầy hỏi: "Hệ thống của em hoạt động theo quy trình chuẩn như thế nào?", bạn trả lời:
+
+Về Quy trình (Process):
+
+"Thưa thầy, hệ thống áp dụng mô hình Sequential Workflow (Tuần tự). Một hồ sơ bắt buộc phải trải qua 4 cổng kiểm soát (Gate): Thẩm định hình thức -&gt; Công bố -&gt; Thẩm định nội dung -&gt; Cấp bằng. Code Backend sẽ chặn tuyệt đối việc nhảy bước. Ví dụ: Nếu chưa có quyết định 'Chấp nhận đơn hợp lệ' ở bước 1, hệ thống sẽ không bao giờ kích hoạt bước 'Thẩm định nội dung'."
+
+Về Dữ liệu (Data):
+
+"Em đã tách bảng patent_details riêng để lưu trữ sâu hơn về bản chất kỹ thuật. Hệ thống phân biệt rõ hai loại đối tượng theo Luật SHTT là Sản phẩm (cấu tạo, vật liệu) và Quy trình (công nghệ, phương pháp). Dữ liệu này phục vụ trực tiếp cho bước 'Thẩm định nội dung' sau này."
+
+Về Theo dõi (Tracking):
+
+"Em sử dụng bảng application_timeline để lưu vết từng quyết định. Ví dụ: Tại bước Thẩm định nội dung, nếu hồ sơ bị từ chối vì 'Mất tính mới', lý do đó sẽ được ghi vào timeline và thông báo ngay cho người dùng để họ khiếu nại hoặc sửa đổi."
+
+Thiết kế này sẽ biến ứng dụng của bạn từ một bài tập CRUD đơn giản thành một hệ thống nghiệp vụ (Business System) thực thụ.
+hãy sửa lại quy trình nộp đơn thành quy trình như sau hay làm thật chính xác từng quy trình: đây là một bài toán nâng cấp nghiệp vụ chuyên sâu. Việc chuyển từ một quy trình nộp đơn đơn giản (Nộp -&gt; Duyệt) sang quy trình chuẩn của Cục Sở hữu trí tuệ (theo sơ đồ và luật bạn cung cấp) đòi hỏi hệ thống phải chuyển sang mô hình State Machine (Máy trạng thái).
+
+Dưới đây là tư vấn thiết kế lại chức năng và CSDL để đáp ứng yêu cầu: "Bước trước xong mới được qua bước sau" và "Lưu trữ đúng chuẩn định nghĩa luật".
+
+1. PHÂN TÍCH QUY TRÌNH (WORKFLOW)
+Dựa trên sơ đồ ảnh bạn gửi, hệ thống không chỉ có trạng thái PENDING hay APPROVED nữa, mà hồ sơ sẽ di chuyển qua các Giai đoạn (Stages).
+
+Quy tắc bất di bất dịch: User không thể tự nhảy cóc. Hệ thống sẽ tự động mở khóa bước tiếp theo khi Admin (Chuyên viên) xác nhận hoàn thành bước hiện tại.
+
+Các giai đoạn cụ thể:
+
+Giai đoạn 0: Soạn thảo & Nộp đơn (User làm).
+
+Giai đoạn 1: Thẩm định hình thức (Admin làm).
+
+Nếu sai: Trả về yêu cầu sửa đổi -&gt; User sửa -&gt; Nộp lại.
+
+Nếu đúng: Chấp nhận đơn hợp lệ -&gt; Chuyển sang GĐ 2.
+
+Giai đoạn 2: Công bố đơn (Hệ thống/Admin làm).
+
+Giai đoạn 3: Yêu cầu thẩm định nội dung (User phải kích hoạt hoặc tự động kích hoạt tùy cấu hình).
+
+Giai đoạn 4: Thẩm định nội dung (Admin làm - Giai đoạn quan trọng nhất theo luật "Tính mới, Sáng tạo, Áp dụng CN").
+
+Đạt: Ra thông báo dự định cấp bằng.
+
+Không đạt: Từ chối.
+
+Giai đoạn 5: Nộp lệ phí & Cấp bằng.
+
+2. THIẾT KẾ CƠ SỞ DỮ LIỆU (DATABASE DESIGN)
+Để lưu trữ "Giải pháp kỹ thuật" (Sản phẩm/Quy trình) và theo dõi quy trình chặt chẽ, bạn cần bổ sung/sửa đổi CSDL như sau.
+
+A. Bảng patent_types (Giữ nguyên nhưng chuẩn hóa dữ liệu)
+Dữ liệu mẫu bắt buộc phải có:
+
+Sáng chế (Bằng độc quyền sáng chế).
+
+Giải pháp hữu ích (Bằng độc quyền GPHI).
+
+B. Bảng submissions (Cập nhật)
+Thêm cột để quản lý giai đoạn hiện tại.
+
+SQL
+
+ALTER TABLE public.submissions
+ADD COLUMN current_stage VARCHAR(50) DEFAULT 'FORMALITY_EXAMINATION', -- Giai đoạn hiện tại
+ADD COLUMN is_locked BOOLEAN DEFAULT true; -- Khóa không cho User sửa khi đang thẩm định
+C. Bảng Mới: patent_details (Lưu trữ đặc thù Sáng chế/GPHI)
+Bảng này tách biệt với submissions để lưu các thông tin chuyên môn theo luật bạn trích dẫn (Mục 2 - Giải pháp kỹ thuật).
+
+SQL
+
+CREATE TABLE IF NOT EXISTS public.patent_details
+(
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    submission_id uuid NOT NULL UNIQUE, -- 1 hồ sơ có 1 chi tiết
+    
+    -- Phân loại đối tượng (Theo mục 2 của bạn)
+    object_type VARCHAR(50) NOT NULL, -- 'PRODUCT' (Sản phẩm) hoặc 'PROCESS' (Quy trình)
+    
+    -- Lĩnh vực kỹ thuật
+    ipc_class VARCHAR(50), -- Phân loại sáng chế quốc tế (IPC)
+    
+    -- Nội dung chi tiết (Có thể dùng JSONB để linh động hoặc text)
+    technical_field TEXT, -- Lĩnh vực kỹ thuật được đề cập
+    background_art TEXT, -- Tình trạng kỹ thuật
+    summary_of_invention TEXT, -- Bản tóm tắt sáng chế
+    brief_description_drawings TEXT, -- Mô tả vắn tắt hình vẽ
+    detailed_description TEXT, -- Mô tả chi tiết (Kết cấu sản phẩm hoặc Các bước quy trình)
+    claims TEXT NOT NULL, -- Yêu cầu bảo hộ (Quan trọng nhất)
+    
+    CONSTRAINT patent_details_submission_fkey FOREIGN KEY (submission_id)
+        REFERENCES public.submissions(id) ON DELETE CASCADE
+);
+D. Bảng Mới: application_timeline (Quản lý từng bước)
+Thay vì chỉ lưu log, bảng này kiểm soát tiến độ. Mỗi dòng là một bước trong quy trình.
+
+SQL
+
+CREATE TABLE IF NOT EXISTS public.application_timeline
+(
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    submission_id uuid NOT NULL,
+    stage_name VARCHAR(50) NOT NULL, -- VD: 'FORMALITY', 'PUBLICATION', 'SUBSTANTIVE', 'FEE'
+    
+    status VARCHAR(50) DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED', 'REQUIRE_AMENDMENT'
+    
+    start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    end_date TIMESTAMP,
+    
+    processor_id uuid, -- Ai là người xử lý bước này (Reviewer)
+    note text, -- Ghi chú (VD: Lỗi sai sót hình thức cần sửa)
+    
+    CONSTRAINT timeline_submission_fkey FOREIGN KEY (submission_id)
+        REFERENCES public.submissions(id) ON DELETE CASCADE
+);
+3. CHỨC NĂNG VÀ HOẠT ĐỘNG CỦA HỆ THỐNG (LOGIC BACKEND)
+Để thực hiện "người dùng phải nộp từng bước", Backend phải hoạt động như sau:
+
+Logic 1: State Machine (Máy trạng thái)
+Trong ApplicationService, bạn viết một hàm chuyển trạng thái:
+
+Java
+
+public void promoteToNextStage(UUID submissionId) {
+    // 1. Lấy hồ sơ
+    Submission sub = repo.findById(submissionId);
+    
+    // 2. Kiểm tra giai đoạn hiện tại
+    switch (sub.getCurrentStage()) {
+        case "FORMALITY":
+            // Nếu thẩm định hình thức OK -&gt; Chuyển sang Công bố
+            createTimelineEntry(sub, "PUBLICATION");
+            sub.setCurrentStage("PUBLICATION");
+            break;
+            
+        case "PUBLICATION":
+             // Tự động hoặc chờ thời gian -&gt; Chuyển sang Thẩm định nội dung
+             createTimelineEntry(sub, "SUBSTANTIVE_WAITING");
+             sub.setCurrentStage("SUBSTANTIVE_WAITING");
+             break;
+             
+        case "SUBSTANTIVE":
+             // Nếu nội dung OK -&gt; Chuyển sang đóng phí
+             createTimelineEntry(sub, "FEE_PAYMENT");
+             sub.setCurrentStage("FEE_PAYMENT");
+             break;
+    }
+    repo.save(sub);
+}
+Logic 2: Khóa giao diện (UI Blocking)
+API trả về chi tiết hồ sơ (ApplicationDetailDTO) phải kèm theo thông tin: User được phép làm gì lúc này?
+
+Ví dụ JSON trả về cho Frontend:
+
+JSON
+
+{
+  "id": "123-abc",
+  "title": "Máy gọt hoa quả tự động",
+  "currentStage": "FORMALITY_EXAMINATION",
+  "status": "REQUIRE_AMENDMENT", // Đang yêu cầu sửa đổi
+  "actionsAllowed": ["UPDATE_DOCUMENT", "RE_SUBMIT"], // Cho phép sửa và nộp lại
+  "isLocked": false // Chưa khóa hẳn
+}
+Nếu currentStage = FORMALITY và status = PENDING: User không được sửa, chỉ được xem (Read-only).
+
+Nếu currentStage = FEE_PAYMENT: User thấy nút "Thanh toán".
+
+Logic 3: Xử lý theo luật (Bảng Patent Details)
+Khi User nộp đơn (Giai đoạn 0), Frontend phải dựa vào loại đối tượng User chọn (Sản phẩm hay Quy trình) để hiển thị Form nhập liệu phù hợp:
+
+Nếu chọn Sản phẩm: Form yêu cầu nhập "Cấu tạo", "Linh kiện", "Sự liên kết các bộ phận".
+
+Nếu chọn Quy trình: Form yêu cầu nhập "Bước 1", "Bước 2", "Điều kiện thực hiện", "Phương tiện".
+
+4. KỊCH BẢN TRÌNH BÀY VỚI THẦY (MÔ HÌNH MỚI)
+Khi thầy hỏi: "Hệ thống của em hoạt động theo quy trình chuẩn như thế nào?", bạn trả lời:
+
+Về Quy trình (Process):
+
+"Thưa thầy, hệ thống áp dụng mô hình Sequential Workflow (Tuần tự). Một hồ sơ bắt buộc phải trải qua 4 cổng kiểm soát (Gate): Thẩm định hình thức -&gt; Công bố -&gt; Thẩm định nội dung -&gt; Cấp bằng. Code Backend sẽ chặn tuyệt đối việc nhảy bước. Ví dụ: Nếu chưa có quyết định 'Chấp nhận đơn hợp lệ' ở bước 1, hệ thống sẽ không bao giờ kích hoạt bước 'Thẩm định nội dung'."
+
+Về Dữ liệu (Data):
+
+"Em đã tách bảng patent_details riêng để lưu trữ sâu hơn về bản chất kỹ thuật. Hệ thống phân biệt rõ hai loại đối tượng theo Luật SHTT là Sản phẩm (cấu tạo, vật liệu) và Quy trình (công nghệ, phương pháp). Dữ liệu này phục vụ trực tiếp cho bước 'Thẩm định nội dung' sau này."
+
+Về Theo dõi (Tracking):
+
+"Em sử dụng bảng application_timeline để lưu vết từng quyết định. Ví dụ: Tại bước Thẩm định nội dung, nếu hồ sơ bị từ chối vì 'Mất tính mới', lý do đó sẽ được ghi vào timeline và thông báo ngay cho người dùng để họ khiếu nại hoặc sửa đổi."
+
+Thiết kế này sẽ biến ứng dụng của bạn từ một bài tập CRUD đơn giản thành một hệ thống nghiệp vụ (Business System) thực thụ.
+
+
+1. Khái niệm
+
+Sáng chế là giải pháp kỹ thuật dưới dạng sản phẩm hoặc quy trình nhằm giải quyết một vấn đề xác định bằng việc ứng dụng các quy luật tự nhiên.
+
+[Điều 4.12 Luật Sở hữu trí tuệ]
+
+Sáng chế được bảo hộ dưới hình thức cấp Bằng độc quyền sáng chế hoặc Bằng độc quyền giải pháp hữu ích.
+
+[Điều 58.1 Luật Sở hữu trí tuệ]
+
+2. Giải pháp kỹ thuật
+
+Giải pháp kỹ thuật - đối tượng được bảo hộ dưới danh nghĩa là sáng chế - là tập hợp cần và đủ các thông tin về cách thức kỹ thuật và/hoặc phương tiện kỹ thuật (ứng dụng các quy luật tự nhiên) nhằm giải quyết một nhiệm vụ (một vấn đề) xác định. Giải pháp kỹ thuật có thể thuộc một trong các dạng sau đây:
+
+(i) Sản phẩm dưới dạng vật thể, ví dụ dụng cụ, máy móc, thiết bị, linh kiện, mạch điện v.v., được thể hiện bằng tập hợp các thông tin xác định một sản phẩm nhân tạo được đặc trưng bởi các dấu hiệu (đặc điểm) kỹ thuật về kết cấu, sản phẩm đó có chức năng (công dụng) như một phương tiện nhằm đáp ứng nhu cầu nhất định của con người; hoặc sản phẩm dưới dạng chất (gồm đơn chất, hợp chất và hỗn hợp chất), ví dụ vật liệu, chất liệu, thực phẩm, dược phẩm, v.v., được thể hiện bằng tập hợp các thông tin xác định một sản phẩm nhân tạo được đặc trưng bởi các dấu hiệu (đặc điểm) kỹ thuật về sự hiện diện, tỷ lệ và trạng thái của các phần tử, có chức năng (công dụng) như một phương tiện nhằm đáp ứng nhu cầu nhất định của con người; hoặc sản phẩm dưới dạng vật liệu sinh học, ví dụ gen, thực vật/động vật biến đổi gen v.v., được thể hiện bằng tập hợp các thông tin về một sản phẩm chứa thông tin di truyền bị biến đổi dưới tác động của con người, có khả năng tự tái tạo;
+
+(ii) Quy trình (quy trình công nghệ; phương pháp chẩn đoán, dự báo, kiểm tra, xử lý v.v.) được thể hiện bằng một tập hợp các thông tin xác định cách thức tiến hành một quá trình, một công việc cụ thể được đặc trưng bởi các dấu hiệu (đặc điểm) về trình tự, điều kiện, thành phần tham gia, biện pháp, phương tiện thực hiện các thao tác nhằm đạt được một mục đích nhất định.
+
+[Điều 16.3.b Thông tư 23/2023/TT-BKHCN]
+
+3. Điều kiện bảo hộ
+
+Sáng chế được bảo hộ dưới hình thức cấp Bằng độc quyền sáng chế nếu đáp ứng các điều kiện sau:
+
+- Có tính mới;
+
+- Có trình độ sáng tạo;
+
+- Có khả năng áp dụng công nghiệp.
+
+Sáng chế được bảo hộ dưới hình thức cấp Bằng độc quyền giải pháp hữu ích nếu không phải là hiểu biết thông thường và đáp ứng các điều kiện sau:
+
+- Có tính mới;
+
+- Có khả năng áp dụng công nghiệp.
+
+[Điều 58.2 Luật Sở hữu trí tuệ]
+
+4. Các đối tượng không được bảo hộ dưới danh nghĩa sáng chế
+
+Các đối tượng sau đây không được bảo hộ với danh nghĩa sáng chế:
+
+- Phát minh, lý thuyết khoa học, phương pháp toán học;
+
+- Sơ đồ, kế hoạch, quy tắc và phương pháp để thực hiện các hoạt động trí óc, huấn luyện vật nuôi, thực hiện trò chơi, kinh doanh; chương trình máy tính;
+
+- Cách thức thể hiện thông tin;
+
+- Giải pháp chỉ mang đặc tính thẩm mỹ;
+
+- Giống thực vật, giống động vật;
+
+- Quy trình sản xuất thực vật, động vật chủ yếu mang bản chất sinh học mà không phải là quy trình vi sinh;
+
+- Phương pháp phòng ngừa, chẩn đoán và chữa bệnh cho người và động vật.
+
+[Điều 59 Luật Sở hữu trí tuệ]
+
+1. Tài liệu cần có trong một bộ hồ sơ đơn
+
+1.1. Tờ khai đăng ký sáng chế, đánh máy theo mẫu số 01 Phụ lục I của Nghị định số 65/2023/NĐ-CP (Mẫu đính kèm).
+
+1.2. Bản mô tả sáng chế/ giải pháp hữu ích
+
+- Bản mô tả sáng chế/giải pháp hữu ích phải đáp ứng quy định tại Phụ lục I của Nghị định số 65/2023/NĐ-CP. Bản mô tả sáng chế/giải pháp hữu ích gồm có Phần mô tả, Yêu cầu bảo hộ và Hình vẽ (nếu có).
+
+- Phần mô tả phải được trình bày đầy đủ, rõ ràng bản chất của sáng chế theo các nội dung sau:
+
+     + Tên sáng chế/giải pháp hữu ích;
+
+     + Lĩnh vực sử dụng sáng chế/giải pháp hữu ích;
+
+     + Tình trạng kỹ thuật của lĩnh vực sử dụng sáng chế/giải pháp hữu ích;
+
+    + Mục đích của sáng chế/giải pháp hữu ích;
+
+     + Bản chất kỹ thuật của sáng chế/giải pháp hữu ích;
+
+     + Mô tả vắn tắt các hình vẽ kèm theo (nếu có);
+
+     + Mô tả chi tiết các phương án thực hiện sáng chế/giải pháp hữu ích;
+
+     + Ví dụ thực hiện sáng chế/giải pháp hữu ích;
+
+     + Những lợi ích (hiệu quả) có thể đạt được.
+
+- Yêu cầu bảo hộ được tách thành riêng sau phần mô tả, yêu cầu bảo hộ được dùng để xác định phạm vi quyền sở hữu công nghiệp đối với sáng chế. Yêu cầu bảo hộ phải được trình bày ngắn gọn, rõ ràng, phù hợp với phần mô tả và hình vẽ, trong đó phải làm rõ những dấu hiệu mới của đối tượng yêu cầu được bảo hộ.
+
+- Hình vẽ, sơ đồ (nếu có): được tách thành trang riêng.
+
+1.3. Bản tóm tắt sáng chế/giải pháp hữu ích
+
+- Tóm tắt sáng chế/giải pháp hữu ích không được vượt quá 150 từ và phải được tách thành trang riêng. Bản tóm tắt có thể có hình vẽ, công thức đặc trưng. Tất cả các hình vẽ, công thức đặc trưng (nếu có) chỉ được trình bày trong một nửa trang A4 và phải rõ ràng. Bản tóm tắt sáng chế/giải pháp hữu ích không bắt buộc phải nộp tại thời điểm nộp đơn và người nộp đơn có thể bổ sung sau.
+
+- Chứng từ nộp phí, lệ phí.
+
+*  Đối với đơn đăng ký sáng chế liên quan đến công nghệ sinh học/dược phẩm, ngoài yêu cầu chung đối với phần mô tả sáng chế quy định tại khoản 1 nêu trên đơn phải phù hợp với các yêu cầu tại Phần IV Phụ lục I của Nghị định số 65/2023/NĐ-CP.
+
+ 
+
+2. Các tài liệu khác (nếu có)
+
+- Giấy ủy quyền (nếu đơn đăng ký sáng chế/giải pháp hữu ích được nộp thông qua tổ chức dịch vụ đại diện sở hữu công nghiệp);
+
+- Tài liệu chứng minh quyền đăng ký (nếu thụ hưởng từ người khác). Ví dụ: Giấy chuyển nhượng quyền nộp đơn... (nếu có);
+
+- Tài liệu chứng minh quyền ưu tiên (nếu đơn đăng ký sáng chế có yêu cầu hưởng quyền ưu tiên).
+
+- Tài liệu thuyết minh về nguồn gốc của nguồn gen hoặc tri thức truyền thống về nguồn gen trong đơn đăng ký sáng chế, đối với sáng chế được trực tiếp tạo ra dựa trên nguồn gen hoặc tri thức truyền thống về nguồn gen.
+
+[Điều 100, Điều 108 Luật Sở hữu trí tuệ; Phụ lục I của Nghị định số 65/2023/NĐ-CP]
+
+ 
+
+3. Yêu cầu chung đối với đơn đăng ký
+
+- Mỗi đơn chỉ được yêu cầu cấp một văn bằng bảo hộ và loại văn bằng bảo hộ được yêu cầu cấp phải phù hợp với đối tượng giải pháp kỹ thuật nêu trong đơn;
+
+- Mọi tài liệu của đơn đều phải được làm bằng tiếng Việt. Đối với các tài liệu được làm bằng ngôn ngữ khác theo quy định tại Điều 100.2 Luật Sở hữu trí tuệ thì phải được dịch ra tiếng Việt;
+
+- Mọi tài liệu đều phải được trình bày theo chiều dọc (riêng hình vẽ, sơ đồ và bảng biểu có thể được trình bày theo chiều ngang) trên một mặt giấy khổ A4 (210mm x 297mm), riêng đối với tài liệu là bản đồ khu vực địa lý có thể được trình bày trên mặt giấy khổ A3 (420mm x 297mm), trong đó có chừa lề theo bốn phía, mỗi lề rộng 20mm, theo phông chữ Times New Roman, chữ không nhỏ hơn cỡ 13, trừ các tài liệu bổ trợ mà nguồn gốc tài liệu đó không nhằm để đưa vào đơn;
+
+- Đối với tài liệu cần lập theo mẫu thì bắt buộc phải sử dụng các mẫu đó và điền đầy đủ các thông tin theo yêu cầu vào những chỗ thích hợp;
+
+- Mỗi loại tài liệu trừ bộ ảnh chụp, bản vẽ kiểu dáng công nghiệp, nếu bao gồm nhiều trang thì mỗi trang phải ghi số thứ tự trang đó bằng chữ số Ả-rập;
+
+- Tài liệu phải được đánh máy hoặc in bằng loại mực khó phai mờ, một cách rõ ràng, sạch sẽ, không tẩy xóa, không sữa chữa; nếu tài liệu có từ 02 trang trở lên cần được đóng dấu giáp lai của người nộp đơn/cơ quan ban hành tài liệu (nếu có); trường hợp phát hiện có sai sót không đáng kể thuộc về lỗi chính tả trong tài liệu đã nộp cho Cục Sở hữu trí tuệ thì người nộp đơn có thể sữa chữa các lỗi đó, nhưng tại chỗ bị sửa chữa phải có chữ ký xác nhận (và đóng dấu, nếu có) của người nộp đơn;
+
+- Thuật ngữ dùng trong đơn phải thống nhất và là thuật ngữ phổ thông (không dùng tiếng địa phương, từ hiếm, từ tự tạo). Ký hiệu, đơn vị đo lường, phông chữ điện tử, quy tắc chính tả dùng trong đơn phải theo tiêu chuẩn Việt Nam);
+
+- Đơn có thể kèm theo tài liệu bổ trợ là vật mang dữ liệu điện tử của một phần hoặc toàn bộ nội dung tài liệu đơn.
+
+[Phụ lục I của Nghị định số 65/2023/NĐ-CP]
+
+ 
+
+4. Phí, lệ phí đăng ký sáng chế/giải pháp hữu ích
+
+- Lệ phí nộp đơn: 150.000VNĐ
+
+- Phí thẩm định hình thức: 180.000VNĐ/01 điểm yêu cầu bảo hộ độc lập;
+
+- Phí thẩm định hình thức từ trang thứ 7 bản mô tả trở đi: 8.000VNĐ/01 trang;
+
+- Phí công bố đơn: 120.000VNĐ;
+
+- Phí công bố từ hình thứ 2 trở đi: 60.000VNĐ/hình;
+
+- Phí thẩm định yêu cầu hưởng quyền ưu tiên (nếu có): 600.000VNĐ/01 đơn ưu tiên;
+
+- Phí tra cứu thông tin nhằm phục vụ quá trình thẩm định: 600.000VNĐ/01 điểm yêu cầu bảo hộ độc lập;
+
+- Phí thẩm định nội dung: 720.000VNĐ/01 điểm yêu cầu bảo hộ độc lập;
+
+- Phí thẩm định nội dung từ trang thứ 7 bản mô tả trở đi: 32.000VNĐ/01 trang
+
+Lưu ý: Đơn đăng ký sáng chế/giải pháp hữu ích cần được phân loại sáng chế quốc tế (IPC), trường hợp người nộp đơn không phân loại hoặc phân loại không chính xác thì Cục Sở hữu trí tuệ sẽ tiến hành phân loại và người nộp đơn cần nộp phí phân loại theo quy định (100.000VNĐ/01 phân loại sáng chế quốc tế).
+
+Ví dụ xem tại đây
+
+ 
+
+5. Thời hạn xử lý đơn đăng ký sáng chế/giải pháp hữu ích
+
+Kể từ ngày được Cục Sở hữu trí tuệ tiếp nhận, đơn đăng ký sáng chế/giải pháp hữu ích được xem xét theo trình tự sau:
+
+- Thẩm định hình thức: 01 tháng
+
+- Công bố đơn đăng ký sáng chế/giải pháp hữu ích:
+
+(i) Đơn đăng ký sáng chế/giải pháp hữu ích được công bố trong tháng thứ mười chín kể từ ngày ưu tiên hoặc ngày nộp đơn, nếu đơn không có ngày ưu tiên hoặc trong thời hạn 02 tháng kể từ ngày chấp nhận đơn hợp lệ, tùy theo ngày nào muộn hơn;
+
+(ii) Đơn đăng ký sáng chế theo Hiệp ước hợp tác về sáng chế (sau đây gọi là “đơn PCT”) được công bố trong thời hạn 02 tháng kể từ ngày chấp nhận đơn hợp lệ đã vào giai đoạn quốc gia;
+
+(iii) Đơn đăng ký sáng chế/giải pháp hữu ích có yêu cầu công bố sớm được công bố trong thời hạn 02 tháng kể từ ngày Cục Sở hữu trí tuệ nhận được yêu cầu công bố sớm hoặc kể từ ngày chấp nhận đơn hợp lệ, tùy theo ngày nào muộn hơn. Để được công bố sớm, chủ đơn cần có Văn bản yêu cầu công bố sớm, trong đó nêu rõ lý do cần công bố sớm. Yêu cầu công bố sớm không phải nộp phí, lệ phí.
+
+- Thẩm định nội dung: không quá mười tám tháng, kể từ ngày công bố đơn nếu yêu cầu thẩm định nội dung được nộp trước ngày công bố đơn hoặc kể từ ngày nhận được yêu cầu thẩm định nội dung nếu yêu cầu đó được nộp sau ngày công bố đơn.
+
+[Điều 110, Điều 119 Luật Sở hữu trí tuệ]
+
+ 
+
+6. Hình thức nộp đơn
+
+Người nộp đơn có thể lựa chọn hình thức nộp đơn giấy hoặc hình thức nộp đơn trực tuyến qua Cổng dịch vụ công trực tuyến của Cục Sở hữu trí tuệ, cụ thể:
+
+a) Hình thức nộp đơn giấy
+
+Người nộp đơn có thể nộp đơn đăng ký sáng chế/giải pháp hữu ích trực tiếp hoặc qua dịch vụ của bưu điện đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ cụ thể như sau:
+
+- Trụ sở Cục Sở hữu trí tuệ, địa chỉ: 386 Nguyễn Trãi, quận Thanh Xuân, thành phố Hà Nội.
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Hồ Chí Minh, địa chỉ: Số 31 Hàn Thuyên, phường Bến Nghé, Quận 1, Thành phố Hồ Chí Minh.  
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Đà Nẵng, địa chỉ: Tầng 3, số 135 Minh Mạng, phường Khuê Mỹ, quận Ngũ Hành Sơn, thành phố Đà Nẵng.
+
+Trường hợp nộp hồ sơ đơn đăng ký sáng chế/giải pháp hữu ích qua bưu điện, người nộp đơn cần chuyển tiền qua dịch vụ của bưu điện, sau đó phô tô Giấy biên nhận chuyển tiền gửi kèm theo hồ sơ đơn đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ để chứng minh khoản tiền đã nộp.
+
+(Lưu ý: Khi chuyển tiền phí, lệ phí đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ, người nộp đơn cần gửi hồ sơ qua bưu điện tương ứng đến điểm tiếp nhận đơn đó).
+
+b) Hình thức nộp đơn trực tuyến
+
+- Điều kiện để nộp đơn trực tuyến: Người nộp đơn cần có chứng thư số và chữ ký số, đăng ký tài khoản trên Hệ thống tiếp nhận đơn trực tuyến và được Cục Sở hữu trí tuệ phê duyệt tài khoản để thực hiện các giao dịch đăng ký quyền SHCN.
+
+- Trình tự nộp đơn trực tuyến: Người nộp đơn cần thực hiện việc khai báo và gửi đơn đăng ký sáng chế/giải pháp hữu ích trên Hệ thống tiếp nhận đơn trực tuyến của Cục Sở hữu trí tuệ, sau khi hoàn thành việc khai báo và gửi đơn trên Hệ thống tiếp nhận đơn trực tuyến, Hệ thống sẽ gửi lại cho người nộp đơn Phiếu xác nhận nộp tài liệu trực tuyến. Trong thời hạn 01 tháng kể từ ngày gửi đơn trực tuyến, người nộp đơn phải đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ vào các ngày làm việc trong giờ giao dịch để xuất trình Phiếu xác nhận tài liệu nộp trực tuyến và tài liệu kèm theo (nếu có) và nộp phí/lệ phí theo quy định. Nếu tài liệu và phí/lệ phí đầy đủ theo quy định, cán bộ nhận đơn sẽ thực hiện việc cấp số đơn vào Tờ khai trên Hệ thống tiếp nhận đơn trực tuyến, nếu không đủ tài liệu và phí/lệ phí theo quy định thì đơn sẽ bị từ chối tiếp nhận. Trong trường hợp Người nộp đơn không hoàn tất thủ tục nộp đơn theo quy định, tài liệu trực tuyến sẽ bị hủy và Thông báo hủy tài liệu trực tuyến được gửi cho Người nộp đơn trên Hệ thống tiếp nhận đơn trực tuyến.
+
+Mẫu tờ khai quy định tại Phụ lục kèm theo Nghị định số 65/2023/NĐ-CP
+
+Tờ khai đăng ký sáng chế
+
+Xem
+
+Tải về
+
+Tờ khai yêu cầu thẩm định nội dung đơn đăng ký sáng chế
+
+Xem
+
+Tải về
+
+1. Thủ tục sửa đổi đơn, chuyển nhượng đơn đăng ký sáng chế/giải pháp hữu ích
+
+1.1 Thủ tục sửa đổi đơn đăng ký sáng chế/giải pháp hữu ích
+
+- Trước khi Cục Sở hữu trí tuệ ra Quyết định từ chối chấp nhận đơn hợp lệ, Quyết định từ chối cấp văn bằng bảo hộ hoặc Quyết định cấp văn bằng bảo hộ, người nộp đơn có thể chủ động hoặc theo yêu cầu của Cục Sở hữu trí tuệ sửa đổi đơn.
+
+- Hồ sơ sửa đổi đơn gồm:
+
+(i) Tờ khai yêu cầu sửa đổi đơn đăng ký sở hữu công nghiệp, đánh máy theo mẫu số 04 Phụ lục II của Nghị định 65/2023/NĐ-CP (Mẫu đính kèm).
+
+(ii) Tài liệu pháp lý chứng minh việc sửa đổi [Riêng đối với yêu cầu sửa đổi nội dung đơn đăng ký sáng chế/giải pháp hữu ích, người nộp đơn phải nộp bản tài liệu tương ứng đã được sửa đổi kèm theo bản thuyết minh chi tiết nội dung sửa đổi so với bản tài liệu ban đầu đã nộp, cụ thể: Một phần hoặc toàn bộ bản mô tả, bản tóm tắt sáng chế/giải pháp hữu ích đối với đơn đăng ký sáng chế/giải pháp hữu ích. Đồng thời, việc sửa đổi không  được mở rộng phạm vi (khối lượng) bảo hộ đã được bộc lộ trong bản mô tả đối với đơn đăng ký sáng chế/giải pháp hữu ích];
+
+(iii) Giấy ủy quyền (nếu yêu cầu sửa đổi đơn nộp thông qua tổ chức dịch vụ đại diện sở hữu công nghiệp);
+
+(iv) Phí thẩm định yêu cầu sửa đổi đơn (160.000VNĐ/01 nội dung yêu cầu sửa đổi), Phí công bố (120.000VNĐ/01 đơn yêu cầu sửa đổi trong trường hợp đơn đăng ký sáng chế đã có Quyết định chấp nhận đơn hợp lệ).
+
+- Yêu cầu sửa đổi đơn được nộp sau khi có Thông báo dự định cấp văn bằng bảo hộ và nộp phí, lệ phí thuộc trường hợp sửa đổi thông tin liên quan đến bản chất đối đượng nêu trong đơn (cụ thể, bản mô tả sáng chế/giải pháp hữu ích) thì đơn phải được thẩm định lại và thu phí thẩm định nội dung tính theo yêu cầu bảo hộ độc lập (720.000VNĐ/01 điểm yêu cầu bảo hộ độc lập).
+
+- Thời hạn xử lý yêu cầu sửa đổi đơn đăng ký sáng chế/giải pháp hữu ích: 06 tháng (với thẩm định nội dung); 10 ngày (với thẩm định hình thức)
+
+- Hình thức nộp đơn:
+
+Người nộp đơn có thể lựa chọn hình thức nộp đơn giấy hoặc hình thức nộp đơn trực tuyến qua Cổng dịch vụ công trực tuyến của Cục Sở hữu trí tuệ, cụ thể:
+
+(i) Hình thức nộp đơn giấy
+
+Người nộp đơn có thể nộp đơn yêu cầu sửa đổi trực tiếp hoặc qua dịch vụ của bưu điện đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ, cụ thể:
+
+- Trụ sở Cục Sở hữu trí tuệ, địa chỉ: 386 Nguyễn Trãi, quận Thanh Xuân, thành phố Hà Nội.
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Hồ Chí Minh, địa chỉ: Số 31 Hàn Thuyên, phường Bến Nghé, Quận 1, Thành phố Hồ Chí Minh.
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Đà Nẵng, địa chỉ: Tầng 3, số 135 Minh Mạng, phường Khuê Mỹ, quận Ngũ Hành Sơn, thành phố Đà Nẵng.
+
+Trường hợp nộp hồ sơ yêu cầu sửa đổi đơn qua bưu điện, người nộp đơn cần chuyển tiền qua dịch vụ của bưu điện, sau đó phô tô Giấy biên nhận chuyển tiền gửi kèm theo hồ sơ đơn đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ để chứng minh khoản tiền đã nộp.
+
+(Lưu ý: Khi chuyển tiền phí, lệ phí đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ, người nộp đơn cần gửi hồ sơ qua bưu điện tương ứng đến điểm tiếp nhận đơn đó).
+
+(ii) Hình thức nộp đơn trực tuyến
+
+- Điều kiện để nộp đơn trực tuyến: Người nộp đơn cần có chứng thư số và chữ ký số, đăng ký tài khoản trên Hệ thống tiếp nhận đơn trực tuyến và được Cục Sở hữu trí tuệ phê duyệt tài khoản để thực hiện các giao dịch đăng ký quyền SHCN.
+
+- Trình tự nộp đơn trực tuyến: Người nộp đơn cần thực hiện việc khai báo và gửi  yêu cầu sửa đổi đơn trên Hệ thống tiếp nhận đơn trực tuyến của Cục Sở hữu trí tuệ, sau khi hoàn thành việc khai báo và gửi đơn trên Hệ thống tiếp nhận đơn trực tuyến, Hệ thống sẽ gửi lại cho người nộp đơn Phiếu xác nhận nộp tài liệu trực tuyến. Trong thời hạn 01 tháng kể từ ngày gửi đơn trực tuyến, người nộp đơn phải đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ vào các ngày làm việc trong giờ giao dịch để  xuất trình Phiếu xác nhận tài liệu nộp trực tuyến và tài liệu kèm theo (nếu có) và nộp phí/lệ phí theo quy định. Nếu tài liệu và phí/lệ phí đầy đủ theo quy định, cán bộ nhận đơn sẽ thực hiện việc cấp số đơn vào Tờ khai trên Hệ thống tiếp nhận đơn trực tuyến, nếu không đủ tài liệu và phí/lệ phí theo quy định thì đơn sẽ bị từ chối tiếp nhận. Trong trường hợp Người nộp đơn không hoàn tất thủ tục nộp đơn theo quy định, tài liệu trực tuyến sẽ bị hủy và Thông báo hủy tài liệu trực tuyến được gửi cho Người nộp đơn trên Hệ thống tiếp nhận đơn trực tuyến.
+
+[Điều 115 Luật Sở hữu trí tuệ; Điều 119.4 Luật Sở hữu trí tuệ; Điều 16.3.d Nghị định 65/2023/NĐ-CP]
+
+1.2 Thủ tục chuyển nhượng đơn đăng ký sáng chế/giải pháp hữu ích
+
+- Trước khi Cục Sở hữu trí tuệ ra Quyết định từ chối chấp nhận đơn hợp lệ, Quyết định từ chối cấp văn bằng bảo hộ hoặc Quyết định cấp văn bằng bảo hộ, người nộp đơn có thể  yêu cầu Cục Sở hữu trí tuệ ghi nhận việc thay đổi chủ đơn trên cơ sở chuyển nhượng, thừa kế, kế thừa hoặc quyết định của cơ quan có thẩm quyền.
+
+- Hồ sơ chuyển nhượng gồm:
+
+(i) Tờ khai yêu cầu ghi nhận chuyển nhượng đơn đăng ký sở hữu công nghiệp, đánh máy theo mẫu số 05 Phụ lục II Nghị định 65/2023/NĐ-CP (Mẫu đính kèm);
+
+(ii) Tài liệu chuyển nhượng đơn đăng ký sở hữu công nghiệp (bản gốc hoặc bản sao có chứng thực trong đó ghi rõ tên, địa chỉ của bên chuyển nhượng và bên được chuyển nhượng; số đơn được chuyển nhượng hoặc thông tin đủ để xác định đơn đó);
+
+(iii) Giấy ủy quyền (nếu yêu cầu chuyển nhượng đơn nộp thông qua tổ chức dịch vụ đại diện sở hữu công nghiệp);
+
+(iv) Phí thẩm định yêu cầu chuyển nhượng đơn (160.000VNĐ/01 đơn đăng ký); Phí công bố (120.000VNĐ/01 đơn đăng ký trong trường hợp đơn đăng ký sáng chế/giải pháp hữu ích đã có Quyết định chấp nhận đơn hợp lệ).
+
+- Thời hạn xử lý yêu cầu chuyển nhượng đơn đăng ký sáng chế/giải pháp hữu ích: 06 tháng (với thẩm định nội dung); 10 ngày (với thẩm định hình thức). Trường hợp yêu cầu ghi nhận thay đổi do chuyển nhượng đơn đăng ký nhãn hiệu được nộp sau khi có thông báo dự định cấp văn bằng bảo hộ, đơn đăng ký nhãn hiệu phải được thẩm định lại và công bố nội dung chuyển nhượng. Người yêu cầu phải nộp phí thẩm định đơn và phí công bố theo quy định.
+
+- Hình thức nộp đơn:
+
+Người nộp đơn có thể lựa chọn hình thức nộp đơn giấy hoặc hình thức nộp đơn trực tuyến đến Cục Sở hữu trí tuệ, cụ thể:
+
+(i) Hình thức nộp đơn giấy
+
+Người nộp đơn có thể nộp đơn yêu cầu chuyển nhượng đơn trực tiếp hoặc qua dịch vụ của bưu điện đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ, cụ thể:
+
+- Trụ sở Cục Sở hữu trí tuệ, địa chỉ: 386 Nguyễn Trãi, quận Thanh Xuân, thành phố Hà Nội.
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Hồ Chí Minh, địa chỉ: Số 31 Hàn Thuyên, phường Bến Nghé, Quận 1, Thành phố Hồ Chí Minh.
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Đà Nẵng, địa chỉ: Tầng 3, số 135 Minh Mạng, phường Khuê Mỹ, quận Ngũ Hành Sơn, thành phố Đà Nẵng.
+
+Trường hợp nộp hồ sơ yêu cầu chuyển nhượng đơn qua bưu điện, người nộp đơn cần chuyển tiền qua dịch vụ của bưu điện, sau đó phô tô Giấy biên nhận chuyển tiền gửi kèm theo hồ sơ đơn đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ để chứng minh khoản tiền đã nộp.
+
+(Lưu ý: Khi chuyển tiền phí, lệ phí đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ, người nộp đơn cần gửi hồ sơ qua bưu điện tương ứng đến điểm tiếp nhận đơn đó).
+
+(ii) Hình thức nộp đơn trực tuyến
+
+- Điều kiện để nộp đơn trực tuyến: Người nộp đơn cần có chứng thư số và chữ ký số, đăng ký tài khoản trên Hệ thống tiếp nhận đơn trực tuyến và được Cục Sở hữu trí tuệ phê duyệt tài khoản để thực hiện các giao dịch đăng ký quyền SHCN.
+
+- Trình tự nộp đơn trực tuyến: Người nộp đơn cần thực hiện việc khai báo và gửi  yêu cầu chuyển nhượng đơn trên Hệ thống tiếp nhận đơn trực tuyến của Cục Sở hữu trí tuệ, sau khi hoàn thành việc khai báo và gửi đơn trên Hệ thống tiếp nhận đơn trực tuyến, Hệ thống sẽ gửi lại cho người nộp đơn Phiếu xác nhận nộp tài liệu trực tuyến. Trong thời hạn 01 tháng kể từ ngày gửi đơn trực tuyến, người nộp đơn phải đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ vào các ngày làm việc trong giờ giao dịch để xuất trình Phiếu xác nhận tài liệu nộp trực tuyến và tài liệu kèm theo (nếu có) và nộp phí/lệ phí theo quy định. Nếu tài liệu và phí/lệ phí đầy đủ theo quy định, cán bộ nhận đơn sẽ thực hiện việc cấp số đơn vào Tờ khai trên Hệ thống tiếp nhận đơn trực tuyến, nếu không đủ tài liệu và phí/lệ phí theo quy định thì đơn sẽ bị từ chối tiếp nhận. Trong trường hợp Người nộp đơn không hoàn tất thủ tục nộp đơn theo quy định, tài liệu trực tuyến sẽ bị hủy và Thông báo hủy tài liệu trực tuyến được gửi cho Người nộp đơn trên Hệ thống tiếp nhận đơn trực tuyến.
+
+[Điều 18 Nghị định 65/2023/NĐ-CP]
+
+2. Thủ tục tách đơn, chuyển đổi đơn đăng ký sáng chế/giải pháp hữu ích
+
+2.1 Thủ tục tách đơn đăng ký sáng chế/giải pháp hữu ích
+
+- Trước khi Cục Sở hữu trí tuệ ra quyết định từ chối chấp nhận đơn, quyết định cấp hoặc từ chối cấp văn bằng bảo hộ, người nộp đơn có thể chủ động hoặc theo yêu cầu của Cục Sở hữu trí tuệ tách đơn. Đơn tách mang số đơn mới và được lấy ngày nộp đơn của đơn ban đầu hoặc các ngày ưu tiên của đơn ban đầu (nếu có).
+
+- Hồ sơ tách đơn gồm:  
+
+(i) Tờ khai đăng ký sáng chế, đánh máy theo mẫu số 01 Phụ lục I của Nghị định số 65/2023/NĐ-CP, trên tờ khai đơn đăng ký sáng chế cần ghi cụ thể số đơn và ngày nộp đơn của đơn gốc ban đầu);
+
+(ii) Bản mô tả sáng chế/giải pháp hữu ích, trong đó đối tượng yêu cầu bảo hộ trong đơn tách phải là đối tượng có trong đơn ban đầu và phải khác với đối tượng yêu cầu bảo hộ trong đơn ban đầu sau khi bị tách; bản thuyết minh về đối tượng yêu cầu bảo hộ và nội dung thay đổi so với đơn ban đầu khi nộp đơn tách;
+
+(iii) Văn bản đề nghị tách đơn đăng ký sáng chế/giải pháp hữu ích;
+
+(iv) Giấy ủy quyền (nếu đơn được nộp thông qua tổ chức dịch vụ đại diện sở hữu công nghiệp);
+
+(v) Phí, lệ phí đơn tách được tính như đối với đơn ban đầu. Riêng đối với văn bản đề nghị tách đơn nộp cho đơn ban đầu cần nộp Phí thẩm định yêu cầu sửa đổi 160.000 VNĐ.
+
+- Thời hạn xử lý đơn tách: Đơn tách được thẩm định về hình thức và tiếp tục được xử lý theo các thủ tục chưa được hoàn tất đối với đơn ban đầu.
+
+- Hình thức nộp đơn:
+
+Người nộp đơn có thể lựa chọn hình thức nộp đơn giấy hoặc hình thức nộp đơn trực tuyến qua Cổng dịch vụ công trực tuyến của Cục Sở hữu trí tuệ, cụ thể:
+
+(i) Hình thức nộp đơn giấy
+
+Người nộp đơn có thể nộp đơn tách đơn trực tiếp hoặc qua bưu điện đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ, cụ thể:
+
+- Trụ sở Cục Sở hữu trí tuệ, địa chỉ: 386 Nguyễn Trãi, quận Thanh Xuân, thành phố Hà Nội.
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Hồ Chí Minh, địa chỉ: Số 31 Hàn Thuyên, phường Bến Nghé, Quận 1, Thành phố Hồ Chí Minh.
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Đà Nẵng, địa chỉ: Tầng 3, số 135 Minh Mạng, phường Khuê Mỹ, quận Ngũ Hành Sơn, thành phố Đà Nẵng.
+
+Trường hợp nộp hồ sơ tách đơn qua bưu điện, người nộp đơn cần chuyển tiền qua dịch vụ của bưu điện, sau đó phô tô Giấy biên nhận chuyển tiền gửi kèm theo hồ sơ đơn đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ để chứng minh khoản tiền đã nộp.
+
+(Lưu ý: Khi chuyển tiền phí, lệ phí đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ, người nộp đơn cần gửi hồ sơ qua bưu điện tương ứng đến điểm tiếp nhận đơn đó).
+
+(ii) Hình thức nộp đơn trực tuyến
+
+- Điều kiện để nộp đơn trực tuyến: Người nộp đơn cần có chứng thư số và chữ ký số, đăng ký tài khoản trên Hệ thống tiếp nhận đơn trực tuyến và được Cục Sở hữu trí tuệ phê duyệt tài khoản để thực hiện các giao dịch đăng ký quyền SHCN.
+
+- Trình tự nộp đơn trực tuyến: Người nộp đơn cần thực hiện việc khai báo và gửi  đơn tách trên Hệ thống tiếp nhận đơn trực tuyến của Cục Sở hữu trí tuệ, sau khi hoàn thành việc khai báo và gửi đơn trên Hệ thống tiếp nhận đơn trực tuyến, Hệ thống sẽ gửi lại cho người nộp đơn Phiếu xác nhận nộp tài liệu trực tuyến. Trong thời hạn 01 tháng kể từ ngày gửi đơn trực tuyến, người nộp đơn phải đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ vào các ngày làm việc trong giờ giao dịch để  xuất trình Phiếu xác nhận tài liệu nộp trực tuyến và tài liệu kèm theo (nếu có) và nộp phí/lệ phí theo quy định. Nếu tài liệu và phí/lệ phí đầy đủ theo quy định, cán bộ nhận đơn sẽ thực hiện việc cấp số đơn vào Tờ khai trên Hệ thống tiếp nhận đơn trực tuyến, nếu không đủ tài liệu và phí/lệ phí theo quy định thì đơn sẽ bị từ chối tiếp nhận. Trong trường hợp Người nộp đơn không hoàn tất thủ tục nộp đơn theo quy định, tài liệu trực tuyến sẽ bị hủy và Thông báo hủy tài liệu trực tuyến được gửi cho Người nộp đơn trên Hệ thống tiếp nhận đơn trực tuyến.
+
+[Điều 115 Luật SHTT và Điều 17 Nghị định 65/2023/NĐ-CP]
+
+2.2 Thủ tục chuyển đổi đơn đăng ký sáng chế/giảp pháp hữu ích
+
+- Trước khi Cục Sở hữu trí tuệ ra Quyết định từ chối chấp nhận đơn, Quyết định từ chối cấp văn bằng bảo hộ hoặc Quyết định cấp văn bằng bảo hộ, người nộp đơn đăng ký sáng chế có thể chuyển đổi yêu cầu cấp Bằng độc quyền sáng chế thành yêu cầu cấp Bằng độc quyền giải pháp hữu ích hoặc ngược lại.
+
+- Hồ sơ chuyển đổi đơn gồm:
+
+(i) Tờ khai đơn đăng ký sáng chế, đánh máy theo mẫu số 01 Phụ lục I của Nghị định số 65/2023/NĐ-CP [Lưu ý: Tờ khai đơn đăng ký ban đầu đánh dấu (x) vào ô “Yêu cầu cấp Bằng độc quyền sáng chế” thì đối với Tờ khai đơn chuyển đổi cần đánh dấu (x) tương ứng vào ô “Yêu cầu cấp Bằng độc quyền giải pháp hữu ích hoặc ngược lại] (Mẫu đính kèm);
+
+(ii) Bản mô tả sáng chế/giải pháp hữu ích
+
+(iii) Văn bản đề nghị chuyển đổi đơn đăng ký sáng chế/giải pháp hữu ích;
+
+(iv) Giấy ủy quyền (nếu đơn nộp thông qua tổ chức dịch vụ đại diện sở hữu công nghiệp);
+
+(v) Lệ phí nộp đơn (150.000VNĐ), Phí công bố (120.000VNĐ trong trường hợp đơn đăng ký sáng chế/giải pháp hữu ích đã có Quyết định chấp nhận đơn hợp lệ).
+
+- Thời hạn xử lý đơn chuyển đổi: Sau khi nhận được yêu cầu chuyển đổi đơn hợp lệ, Cục Sở hữu trí tuệ tiếp tục tiến hành thủ tục xử lý đơn chuyển đổi theo quy định tương ứng, nhưng không thực hiện lại các thủ tục đã tiến hành đối với trước khi có yêu cầu chuyển đổi.
+
+- Hình thức nộp đơn:
+
+Người nộp đơn có thể lựa chọn hình thức nộp đơn giấy hoặc hình thức nộp đơn trực tuyến qua Cổng dịch vụ công trực tuyến của Cục Sở hữu trí tuệ, cụ thể:
+
+(i) Hình thức nộp đơn giấy
+
+Người nộp đơn có thể nộp hồ sơ chuyển đổi đơn trực tiếp hoặc qua dịch vụ của bưu điện đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ, cụ thể:
+
+- Trụ sở Cục Sở hữu trí tuệ, địa chỉ: 386 Nguyễn Trãi, quận Thanh Xuân, thành phố Hà Nội.
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Hồ Chí Minh, địa chỉ: Số 31 Hàn Thuyên, phường Bến Nghé, Quận 1, Thành phố Hồ Chí Minh.
+
+- Văn phòng đại diện Cục Sở hữu trí tuệ tại thành phố Đà Nẵng, địa chỉ: Tầng 3, số 135 Minh Mạng, phường Khuê Mỹ, quận Ngũ Hành Sơn, thành phố Đà Nẵng.
+
+Trường hợp nộp hồ sơ chuyển đổi đơn qua bưu điện, người nộp đơn cần chuyển tiền qua dịch vụ của bưu điện, sau đó phô tô Giấy biên nhận chuyển tiền gửi kèm theo hồ sơ đơn đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ để chứng minh khoản tiền đã nộp.
+
+(Lưu ý: Khi chuyển tiền phí, lệ phí đến một trong các điểm tiếp nhận đơn nêu trên của Cục Sở hữu trí tuệ, người nộp đơn cần gửi hồ sơ qua bưu điện tương ứng đến điểm tiếp nhận đơn đó).
+
+(ii) Hình thức nộp đơn trực tuyến
+
+- Điều kiện để nộp đơn trực tuyến: Người nộp đơn cần có chứng thư số và chữ ký số, đăng ký tài khoản trên Hệ thống tiếp nhận đơn trực tuyến và được Cục Sở hữu trí tuệ phê duyệt tài khoản để thực hiện các giao dịch đăng ký quyền SHCN.
+
+- Trình tự nộp đơn trực tuyến: Người nộp đơn cần thực hiện việc khai báo và gửi  hồ sơ chuyển đổi đơn trên Hệ thống tiếp nhận đơn trực tuyến của Cục Sở hữu trí tuệ, sau khi hoàn thành việc khai báo và gửi đơn trên Hệ thống tiếp nhận đơn trực tuyến, Hệ thống sẽ gửi lại cho người nộp đơn Phiếu xác nhận nộp tài liệu trực tuyến. Trong thời hạn 01 tháng kể từ ngày gửi đơn trực tuyến, người nộp đơn phải đến một trong các điểm tiếp nhận đơn của Cục Sở hữu trí tuệ vào các ngày làm việc trong giờ giao dịch để  xuất trình Phiếu xác nhận tài liệu nộp trực tuyến và tài liệu kèm theo (nếu có) và nộp phí/lệ phí theo quy định. Nếu tài liệu và phí/lệ phí đầy đủ theo quy định, cán bộ nhận đơn sẽ thực hiện việc cấp số đơn vào Tờ khai trên Hệ thống tiếp nhận đơn trực tuyến, nếu không đủ tài liệu và phí/lệ phí theo quy định thì đơn sẽ bị từ chối tiếp nhận. Trong trường hợp Người nộp đơn không hoàn tất thủ tục nộp đơn theo quy định, tài liệu trực tuyến sẽ bị hủy và Thông báo hủy tài liệu trực tuyến được gửi cho Người nộp đơn trên Hệ thống tiếp nhận đơn trực tuyến.
+
+[Điều 115 Luật SHTT và Điều 17 Nghị định 65/2023/NĐ-CP]
+
+Mẫu tờ khai quy định tại Phụ lục kèm theo Nghị định số 65/2023/NĐ-CP
+
+Tờ khai sửa đổi, bổ sung đơn đăng ký sở hữu công nghiệp
+
+Xem
+
+Tải về
+
+Tờ khai yêu cầu ghi nhận chuyển nhượng đơn đăng ký sở hữu công nghiệp
+
+Xem
+
+Tải về
+

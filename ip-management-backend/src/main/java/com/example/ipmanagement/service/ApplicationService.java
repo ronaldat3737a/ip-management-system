@@ -6,6 +6,7 @@ import com.example.ipmanagement.controller.dto.DashboardStatsDTO;
 import com.example.ipmanagement.controller.dto.FileDTO;
 import com.example.ipmanagement.model.Application;
 import com.example.ipmanagement.model.ApplicationFile;
+import com.example.ipmanagement.model.ApplicationStatus;
 import com.example.ipmanagement.model.User;
 import com.example.ipmanagement.repository.ApplicationFileRepository;
 import com.example.ipmanagement.repository.ApplicationRepository;
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
-
 
 import java.io.IOException;
 import java.util.Collections;
@@ -51,7 +51,7 @@ public class ApplicationService {
         application.setTitle(title);
         application.setDescription(description);
         application.setSubmittedBy(user);
-        application.setStatus("PENDING");
+        application.setStatus(ApplicationStatus.DRAFTING_AND_FILING);
         application.setUuid(UUID.randomUUID());
 
         Application savedApplication = applicationRepository.save(application);
@@ -73,14 +73,14 @@ public class ApplicationService {
 
         savedApplication.setFiles(applicationFiles);
         Application finalApplication = applicationRepository.save(savedApplication);
-        
+
         return mapToApplicationDetailDTO(finalApplication);
     }
 
     @Transactional(readOnly = true)
-    public List<ApplicationListDTO> getAllApplications(String status) {
+    public List<ApplicationListDTO> getAllApplications(ApplicationStatus status) {
         List<Application> applications;
-        if (StringUtils.hasText(status)) {
+        if (status != null) {
             applications = applicationRepository.findByStatus(status);
         } else {
             applications = applicationRepository.findAll();
@@ -106,10 +106,19 @@ public class ApplicationService {
     }
 
     @Transactional
-    public ApplicationDetailDTO updateStatus(Long applicationId, String status) {
+    public ApplicationDetailDTO updateStatus(Long applicationId, ApplicationStatus status, String rejectionReason) {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found with id: " + applicationId));
+
+        // Basic state machine logic
+        // A more robust implementation would use a dedicated state machine library or a more structured approach
         application.setStatus(status);
+        if (status == ApplicationStatus.DRAFTING_AND_FILING && rejectionReason != null && !rejectionReason.isEmpty()) {
+            application.setRejectionReason(rejectionReason);
+        } else {
+            application.setRejectionReason(null);
+        }
+
         Application updatedApplication = applicationRepository.save(application);
         updatedApplication.getFiles().size();
         return mapToApplicationDetailDTO(updatedApplication);
@@ -119,13 +128,18 @@ public class ApplicationService {
     public DashboardStatsDTO getDashboardStats(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        long total = applicationRepository.countBySubmittedBy(user);
-        long pending = applicationRepository.countByUserAndStatus(user, "PENDING");
-        long approved = applicationRepository.countByUserAndStatus(user, "APPROVED");
-        long rejected = applicationRepository.countByUserAndStatus(user, "REJECTED");
 
-        return new DashboardStatsDTO(total, pending, approved, rejected);
+        long total = applicationRepository.countBySubmittedBy(user);
+        long drafting = applicationRepository.countByUserAndStatus(user, ApplicationStatus.DRAFTING_AND_FILING);
+        long formality = applicationRepository.countByUserAndStatus(user, ApplicationStatus.FORMALITY_EXAMINATION);
+        long publication = applicationRepository.countByUserAndStatus(user, ApplicationStatus.APPLICATION_PUBLICATION);
+        long substantiveRequest = applicationRepository.countByUserAndStatus(user, ApplicationStatus.SUBSTANTIVE_EXAMINATION_REQUEST);
+        long substantive = applicationRepository.countByUserAndStatus(user, ApplicationStatus.SUBSTANTIVE_EXAMINATION);
+        long granted = applicationRepository.countByUserAndStatus(user, ApplicationStatus.FEE_PAYMENT_AND_GRANT);
+
+        // For simplicity, we'll group some statuses for the dashboard.
+        // This can be adjusted based on UI requirements.
+        return new DashboardStatsDTO(total, drafting + formality, publication + substantiveRequest + substantive, granted);
     }
 
     private ApplicationListDTO mapToApplicationListDTO(Application app) {
@@ -133,7 +147,7 @@ public class ApplicationService {
         return new ApplicationListDTO(
                 app.getId(),
                 app.getTitle(),
-                app.getStatus(),
+                app.getStatus().name(),
                 username
         );
     }
@@ -143,7 +157,8 @@ public class ApplicationService {
         dto.setId(application.getId());
         dto.setTitle(application.getTitle());
         dto.setDescription(application.getDescription());
-        dto.setStatus(application.getStatus());
+        dto.setStatus(application.getStatus().name());
+        dto.setRejectionReason(application.getRejectionReason());
         String username = (application.getSubmittedBy() != null) ? application.getSubmittedBy().getUsername() : "N/A";
         dto.setSubmittedByUsername(username);
 

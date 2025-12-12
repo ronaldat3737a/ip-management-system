@@ -1,0 +1,164 @@
+Dưới đây là bản thiết kế giao diện hoàn chỉnh – đầy đủ – rõ ràng dành cho NGƯỜI DUYỆT ĐƠN (ADMIN / CHUYÊN VIÊN THẨM ĐỊNH) theo mô hình State Machine 6 giai đoạn chuẩn Cục SHTT.
+Thiết kế này có thể dùng để làm prototype, làm UI/UX, hoặc đưa thẳng vào tài liệu SRS / Design Document.
+________________________________________
+🎨 HỆ THỐNG GIAO DIỆN DÀNH CHO NGƯỜI DUYỆT ĐƠN (ADMIN)
+Tổng quan
+Admin cần:
+•	Xem danh sách đơn theo từng trạng thái
+•	Vào chi tiết để thẩm định
+•	Chuyển trạng thái (state transition) đúng quy trình
+•	Yêu cầu người nộp sửa
+•	Gửi thông báo
+•	Ghi log mỗi lần chuyển trạng thái
+Giao diện được thiết kế để đảm bảo:
+•	Tất cả hành động thẩm định dễ thấy
+•	Không thể nhảy bước
+•	Timeline theo dõi quá trình xử lý
+________________________________________
+🟥 1. Trang Dashboard tổng quan
+📌 Mục đích: Cho Admin thấy tất cả đơn theo từng giai đoạn/thống kê.
+🧱 Bố cục
+1) Thanh bên trái (Sidebar)
+•	📄 Danh sách đơn
+•	📊 Thống kê
+•	👥 Người dùng
+•	⚙️ Cài đặt hệ thống
+2) Phần chính (Main Panel)
+•	Thống kê nhanh:
+o	Đơn mới nộp: 12
+o	Đơn đang chờ thẩm định hình thức: 21
+o	Đơn đang công bố: 54
+o	Đơn đang chờ thẩm định nội dung: 12
+o	Đơn sắp cấp bằng: 4
+•	Biểu đồ trạng thái (State Distribution)
+Pie chart hoặc bar chart.
+•	Đơn gần đây (Recent Activity)
+o	Đơn #2024-233 vừa được chuyển sang “Thẩm định nội dung”.
+o	Đơn #2024-222 bị yêu cầu sửa.
+________________________________________
+🟥 2. Trang Danh sách đơn
+🧱 Yêu cầu UI
+Toolbar trên cùng gồm:
+•	Ô tìm kiếm (search by title, ID, applicant)
+•	Bộ lọc trạng thái (State filter):
+o	🔘 Mới nộp
+o	🔘 Thẩm định hình thức
+o	🔘 Công bố đơn
+o	🔘 Yêu cầu thẩm định nội dung
+o	🔘 Thẩm định nội dung
+o	🔘 Cấp bằng
+•	Bộ lọc ngày nộp
+•	Sắp xếp: Mới nhất / Cũ nhất / Theo trạng thái
+🧾 Bảng danh sách đơn
+Mã đơn	Tên sáng chế	Người nộp	Trạng thái hiện tại	Ngày nộp	Hành động
+#2024-021	Thiết bị đo độ rung...	Nguyễn A	Thẩm định hình thức	08/12/2025	🔍 Xem chi tiết
+#2024-019	Hệ thống nhận dạng...	Trần B	Thẩm định nội dung	07/12/2025	🔍 Xem chi tiết
+Nút "Xem chi tiết" mở trang chi tiết đơn.
+________________________________________
+🟥 3. Trang Chi tiết đơn – View + State Machine
+Trang quan trọng nhất cho Admin.
+🌟 Bố cục trang
+1) Header
+•	Tên đơn: "Hệ thống phân tích giao thông bằng AI"
+•	Mã đơn: #2024-019
+•	Người nộp: Trần B
+•	Trạng thái hiện tại: Thẩm định hình thức
+•	🔄 State Badge hiển thị màu theo trạng thái
+________________________________________
+🌟 2) Giao diện State Machine (Timeline)
+Dạng Stepper horizontal:
+1.	Nộp đơn (done)
+2.	Thẩm định hình thức (current)
+3.	Công bố đơn
+4.	Yêu cầu thẩm định nội dung
+5.	Thẩm định nội dung
+6.	Cấp bằng
+🟦 Bước hiện tại: sáng màu, có icon "pen".
+🟩 Bước đã hoàn thành: có dấu check ✔.
+⬜ Bước chưa đến: màu xám.
+________________________________________
+🟥 4. Tab chi tiết nội dung
+Tabs:
+📄 Tab 1: Hồ sơ
+•	Thông tin người nộp
+•	File mô tả sáng chế
+•	Bản vẽ / tài liệu kỹ thuật
+•	Ngày nộp
+•	Lịch sử sửa đổi
+🔍 Tab 2: Ghi chú thẩm định
+Admin có thể:
+•	Ghi chú nội bộ
+•	Ghi chú gửi cho người nộp
+📜 Tab 3: Lịch sử chuyển trạng thái
+Dạng timeline vertical:
+Thời gian	Hành động	Người thực hiện	Ghi chú
+08/12	Chuyển sang Thẩm định hình thức	Admin	—
+08/12	User nộp đơn	User A	—
+________________________________________
+🟥 5. Khu vực hành động (Action Panel)
+Tùy theo trạng thái hiện tại, hệ thống chỉ hiển thị các nút hợp lệ.
+________________________________________
+📌 Trạng thái 1: Thẩm định hình thức
+Các nút:
+•	✔ Đạt yêu cầu hình thức → chuyển sang Công bố đơn
+•	❌ Không đạt → Yêu cầu người nộp sửa
+•	📝 Gửi thông báo
+Form popup khi yêu cầu sửa:
+•	Lý do yêu cầu sửa (textarea)
+•	Hạn cuối nộp lại
+________________________________________
+📌 Trạng thái 2: Công bố đơn
+Chỉ Admin có quyền "Công bố".
+Nút:
+•	📣 Công bố đơn → chuyển sang Yêu cầu thẩm định nội dung
+________________________________________
+📌 Trạng thái 3: Yêu cầu thẩm định nội dung
+Admin phải kiểm tra người nộp đã nộp phí hay chưa.
+Nút:
+•	✔ Xác nhận yêu cầu → sang Thẩm định nội dung
+________________________________________
+📌 Trạng thái 4: Thẩm định nội dung
+Nhiều action quan trọng:
+•	✔ Đạt yêu cầu nội dung → dự định cấp bằng
+•	❌ Không đạt → Từ chối
+•	📑 Yêu cầu bổ sung thông tin
+Popup yêu cầu bổ sung:
+•	Nội dung yêu cầu
+•	Deadline trả lời
+________________________________________
+📌 Trạng thái 5: Cấp bằng
+Nút:
+•	🧾 Xác nhận đã đóng phí → cấp bằng
+•	📥 Tải giấy chứng nhận (PDF)
+________________________________________
+🟥 6. Popup – Modal – Form
+Gửi yêu cầu sửa / bổ sung
+•	Textarea
+•	File minh họa (optional)
+•	Deadline
+•	Nút gửi
+Gửi thông báo
+•	Chủ đề
+•	Nội dung
+•	Đính kèm
+________________________________________
+🟥 7. Mobile Responsive
+•	Timeline chuyển sang vertical
+•	Bảng danh sách chuyển sang dạng card
+•	Action panel thành bottom sheet
+________________________________________
+🟥 8. Hỗ trợ UX nâng cao
+🔔 Notification Center
+Admin thấy cảnh báo:
+•	Đơn bị user trả lời
+•	Đơn sắp đến hạn xử lý
+•	Đơn cần thẩm định nội dung
+📌 Highlight task cần làm
+Ví dụ:
+“Bạn có 12 đơn đang chờ thẩm định hình thức.”
+________________________________________
+🟥 9. Quy tắc State Machine (hiển thị trong UI)
+Mỗi action transition đều có tooltip:
+•	❗ "Bạn chỉ có thể thẩm định hình thức khi user đã nộp đơn hợp lệ."
+•	❗ "Không thể công bố đơn nếu chưa hoàn tất thẩm định hình thức."
+

@@ -66,3 +66,62 @@ form a {
 form a:hover {
     text-decoration: underline;
 }
+
+/* Tab Navigation */
+.tab-navigation {
+    display: flex;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #ccc;
+}
+
+.tab-navigation button {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #555;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-navigation button.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+    font-weight: 600;
+}
+
+.tab-content {
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.review-section {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 4px;
+}
+
+.review-section h4 {
+    margin-top: 0;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.form-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eee;
+}
+
+.error-text {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}

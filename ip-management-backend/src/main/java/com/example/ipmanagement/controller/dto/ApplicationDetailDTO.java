@@ -9,6 +9,7 @@ public class ApplicationDetailDTO {
     private String title;
     private String description;
     private String status;
+    private String rejectionReason;
     private String submittedByUsername;
     private List<FileDTO> files;
 }

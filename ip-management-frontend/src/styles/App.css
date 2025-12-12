@@ -18,3 +18,64 @@ h1, h2 {
     text-align: center;
     margin-bottom: 2rem;
 }
+
+/* Workflow Styles */
+.workflow-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px 0;
+    position: relative;
+}
+
+.workflow-container::before {
+    content: '';
+    position: absolute;
+    top: 30px; /* Adjust to align with the center of the dots */
+    left: 5%;
+    right: 5%;
+    height: 2px;
+    background-color: #e0e0e0;
+    z-index: -1;
+}
+
+.workflow-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 15%; /* Adjust as needed */
+}
+
+.workflow-dot {
+    width: 20px;
+    height: 20px;
+    background-color: #e0e0e0;
+    border-radius: 50%;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 1;
+    border: 3px solid #e0e0e0;
+}
+
+.workflow-label {
+    font-size: 0.8rem;
+    color: #666;
+    max-width: 100px;
+}
+
+.workflow-stage.completed .workflow-dot {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.workflow-stage.active .workflow-dot {
+    background-color: #fff;
+    border-color: #007bff;
+    transform: scale(1.2);
+}
+
+.workflow-stage.active .workflow-label {
+    font-weight: bold;
+    color: #007bff;
+}

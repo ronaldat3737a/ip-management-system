@@ -29,7 +29,10 @@ public class Application {
 
     private String type; // e.g., "TRADEMARK", "PATENT", "DESIGN"
 
-    private String status; // e.g., "PENDING", "APPROVED", "REJECTED"
+    @Enumerated(EnumType.STRING)
+    private ApplicationStatus status;
+
+    private String rejectionReason;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

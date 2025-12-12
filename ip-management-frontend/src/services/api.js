@@ -42,8 +42,8 @@ export const createApplication = (formData) =>
   });
 
 // Cập nhật trạng thái application
-export const updateApplicationStatus = (id, status) =>
-  axios.patch(`${BASE_URL}/applications/${id}/status`, { status });
+export const updateApplicationStatus = (id, { status, rejectionReason }) =>
+  axios.patch(`${BASE_URL}/applications/${id}/status`, { status, rejectionReason });
 
 // Download file
 export const downloadFile = async (fileId, fileName) => {

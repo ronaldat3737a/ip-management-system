@@ -1,0 +1,240 @@
+I. MÔ HÌNH TỔNG QUAN (STATE MACHINE – MÁY TRẠNG THÁI)
+
+Thay vì mô hình đơn giản (Nộp → Duyệt), hệ thống được nâng cấp theo quy trình chuẩn của Cục SHTT.
+
+Mỗi hồ sơ luôn nằm đúng một Giai đoạn (Stage) nhất định.
+Nghiêm cấm nhảy bước: Bước trước hoàn tất → hệ thống mới mở khóa bước sau.
+
+Danh sách Giai đoạn Chính
+Giai đoạn	Tên	Ai thực hiện?	Diễn giải
+0	DRAFT_SUBMISSION	User	Soạn thảo & nộp đơn
+1	FORMALITY_EXAMINATION	Admin	Thẩm định hình thức
+–	FORMALITY_AMENDMENT_REQUIRED	User	User sửa đổi theo yêu cầu
+2	PUBLICATION	Hệ thống/Admin	Công bố đơn
+3	REQUEST_SUBSTANTIVE_EXAMINATION	User	User yêu cầu thẩm định nội dung
+4	SUBSTANTIVE_EXAMINATION	Admin	Thẩm định nội dung (Novelty – Inventive Step – Industrial Applicability)
+–	SUBSTANTIVE_AMENDMENT_REQUIRED	User	Sửa đổi/giải trình
+–	SUBSTANTIVE_REJECTED	Admin	Từ chối đơn
+5	FEE_PAYMENT_AND_GRANT	User/Admin	Nộp lệ phí & cấp bằng
+Luồng chuyển trạng thái (CHUẨN & CỨNG)
+DRAFT_SUBMISSION 
+    -> FORMALITY_EXAMINATION
+        -> FORMALITY_AMENDMENT_REQUIRED -> FORMALITY_EXAMINATION
+        -> (OK) → PUBLICATION
+            -> REQUEST_SUBSTANTIVE_EXAMINATION
+                -> SUBSTANTIVE_EXAMINATION
+                    -> SUBSTANTIVE_AMENDMENT_REQUIRED -> SUBSTANTIVE_EXAMINATION
+                    -> (OK) → FEE_PAYMENT_AND_GRANT
+                    -> (NOT OK) → SUBSTANTIVE_REJECTED
+
+II. MÔ TẢ NGHIỆP VỤ THEO GIAI ĐOẠN (BUSINESS WORKFLOW)
+Giai đoạn 0 – DRAFT_SUBMISSION
+
+User nhập thông tin, đính kèm tài liệu.
+
+Chọn đối tượng bảo hộ: PRODUCT hoặc PROCESS.
+
+Khi nhấn “Nộp đơn” → chuyển sang FORMALITY_EXAMINATION.
+
+Giai đoạn 1 – FORMALITY_EXAMINATION
+
+Admin kiểm tra:
+
+Hình thức đơn
+
+Tờ khai
+
+Phí
+
+Hình vẽ
+
+Tài liệu tối thiểu
+
+Quyết định:
+
+✔ Chấp nhận đơn hợp lệ → sang PUBLICATION
+
+🟠 Yêu cầu sửa đổi → FORMALITY_AMENDMENT_REQUIRED (User sửa → Nộp lại → quay lại FORMALITY_EXAMINATION)
+
+❌ Từ chối đơn (Kết thúc)
+
+Giai đoạn 2 – PUBLICATION
+
+Hệ thống công bố đơn lên Công báo.
+
+Sau thời gian luật định → mở khóa giai đoạn 3.
+
+Giai đoạn 3 – REQUEST_SUBSTANTIVE_EXAMINATION
+
+User phải chủ động gửi yêu cầu thẩm định nội dung (hoặc hệ thống tự gửi theo cấu hình).
+
+Khi xác nhận → sang SUBSTANTIVE_EXAMINATION.
+
+Giai đoạn 4 – SUBSTANTIVE_EXAMINATION
+
+Admin thực hiện đánh giá:
+
+Tính mới
+
+Trình độ sáng tạo
+
+Khả năng áp dụng CN
+
+Tra cứu thông tin sáng chế (Search Report)
+
+Quyết định:
+
+✔ Dự định cấp bằng → Sang FEE_PAYMENT_AND_GRANT
+
+🟠 Thiếu sót nội dung, yêu cầu giải trình/sửa claims → SUBSTANTIVE_AMENDMENT_REQUIRED → User sửa → Quay lại SUBSTANTIVE_EXAMINATION
+
+❌ Từ chối → SUBSTANTIVE_REJECTED
+
+Giai đoạn 5 – FEE_PAYMENT_AND_GRANT
+
+User đóng lệ phí.
+Admin xác nhận → Cấp bằng → Hoàn tất quy trình.
+
+III. THIẾT KẾ CƠ SỞ DỮ LIỆU (DATABASE DESIGN)
+1. Bảng patent_types (Chuẩn hóa)
+
+invention (Sáng chế)
+
+utility_solution (Giải pháp hữu ích)
+
+2. Bảng submissions (Cốt lõi – Điều khiển state machine)
+
+Các trường thêm mới quan trọng:
+
+ALTER TABLE public.submissions
+ADD COLUMN current_stage VARCHAR(50) NOT NULL DEFAULT 'DRAFT_SUBMISSION',
+ADD COLUMN status VARCHAR(50) DEFAULT 'PENDING',
+ADD COLUMN is_locked BOOLEAN DEFAULT true;
+
+3. Bảng patent_details (Thông tin đặc thù Sáng chế/GPHI)
+
+✔ Phân tách khỏi submissions
+✔ Lưu trữ nội dung theo luật: Mô tả – Hình vẽ – Claims – Bối cảnh kỹ thuật
+
+<the SQL is already good, giữ nguyên>
+
+4. Bảng application_timeline (Điều khiển Workflow + Audit Trail)
+
+Điểm quan trọng:
+Mỗi giai đoạn sẽ có ít nhất một dòng, theo dõi đầy đủ: start, end, status, note, processor.
+
+<the SQL is already good, giữ nguyên>
+
+IV. LOGIC BACKEND (STATE MACHINE ENGINE)
+Hàm chuyển giai đoạn (chuẩn nhất để AI sinh code)
+public void promoteToNextStage(UUID submissionId) {
+    Submission sub = repo.findById(submissionId);
+
+    switch (sub.getCurrentStage()) {
+
+        case "FORMALITY_EXAMINATION":
+            createTimeline(sub, "PUBLICATION");
+            sub.setCurrentStage("PUBLICATION");
+            break;
+
+        case "PUBLICATION":
+            createTimeline(sub, "REQUEST_SUBSTANTIVE_EXAMINATION");
+            sub.setCurrentStage("REQUEST_SUBSTANTIVE_EXAMINATION");
+            break;
+
+        case "REQUEST_SUBSTANTIVE_EXAMINATION":
+            createTimeline(sub, "SUBSTANTIVE_EXAMINATION");
+            sub.setCurrentStage("SUBSTANTIVE_EXAMINATION");
+            break;
+
+        case "SUBSTANTIVE_EXAMINATION":
+            createTimeline(sub, "FEE_PAYMENT_AND_GRANT");
+            sub.setCurrentStage("FEE_PAYMENT_AND_GRANT");
+            break;
+    }
+
+    repo.save(sub);
+}
+
+
+Không cho phép chuyển stage khi chưa hoàn tất stage hiện tại.
+
+LOGIC KIỂM SOÁT TRUY CẬP
+
+API trả về cho frontend:
+
+{
+  "id": "123",
+  "title": "Máy cắt cỏ tự động",
+  "currentStage": "FORMALITY_EXAMINATION",
+  "status": "REQUIRE_AMENDMENT",
+  "isLocked": false,
+  "actionsAllowed": [
+      "UPDATE_DOCUMENT",
+      "RE_SUBMIT"
+  ]
+}
+
+V. UI/UX – MÔ TẢ ĐẦY ĐỦ
+1. Giao diện User
+Dashboard
+
+Mã đơn
+
+Tên sáng chế
+
+Loại hình
+
+Giai đoạn
+
+Trạng thái
+
+Hành động nhanh (Sửa, Gửi yêu cầu TĐND, Thanh toán…)
+
+Chi tiết hồ sơ
+
+✔ Stepper 6 bước
+✔ Alert Box động
+✔ Tabs: Info – Documents – Timeline
+
+2. Giao diện Reviewer
+WorkQueue
+
+Lọc theo giai đoạn
+
+Hạn xử lý
+
+Workspace (2 cột)
+
+Trái: Nội dung/PDF
+
+Phải: Checklist + Quyết định
+
+VI. MÔ TẢ NGHIỆP VỤ CHUẨN (DEMO SCENARIO)
+
+Ví dụ xử lý sửa đổi hình thức (Stage 1):
+
+Reviewer yêu cầu sửa
+→ trạng thái chuyển thành FORMALITY_AMENDMENT_REQUIRED
+
+User sửa → Nộp lại
+→ quay lại FORMALITY_EXAMINATION
+
+Reviewer duyệt
+→ Sang PUBLICATION
+
+✅ KẾT LUẬN
+
+Đây là bản context hoàn chỉnh – sạch – logic – chuyên nghiệp.
+Đủ chuẩn để:
+
+Sinh code backend (state machine, API, service, DTO)
+
+Sinh code frontend (stepper, button logic)
+
+Sinh database schema
+
+Sinh tài liệu cho thầy, doanh nghiệp
+
+
+

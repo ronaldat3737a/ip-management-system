@@ -5,14 +5,14 @@ import lombok.Data;
 @Data
 public class DashboardStatsDTO {
     private long totalApplications;
-    private long pendingApplications;
-    private long approvedApplications;
-    private long rejectedApplications;
+    private long inProgressApplications;
+    private long reviewApplications;
+    private long completedApplications;
 
-    public DashboardStatsDTO(long totalApplications, long pendingApplications, long approvedApplications, long rejectedApplications) {
+    public DashboardStatsDTO(long totalApplications, long inProgressApplications, long reviewApplications, long completedApplications) {
         this.totalApplications = totalApplications;
-        this.pendingApplications = pendingApplications;
-        this.approvedApplications = approvedApplications;
-        this.rejectedApplications = rejectedApplications;
+        this.inProgressApplications = inProgressApplications;
+        this.reviewApplications = reviewApplications;
+        this.completedApplications = completedApplications;
     }
 }

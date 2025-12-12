@@ -1,0 +1,155 @@
+Dưới đây là bản thiết kế UI/UX hoàn chỉnh, đầy đủ tất cả màn hình cần thiết cho Người nộp đơn (Applicant/User) để thao tác trơn tru theo State Machine 6 giai đoạn chuẩn của Cục Sở hữu Trí tuệ.
+Thiết kế này phù hợp để bạn đưa vào Figma, Frontend hoặc trình bày với giảng viên.
+________________________________________
+🎯 MỤC TIÊU THIẾT KẾ UI
+•	Người nộp đơn không thể làm sai quy trình
+•	Hệ thống không hiển thị nút sai thời điểm
+•	Mỗi giai đoạn sẽ mở khóa đúng hành động
+•	Trạng thái phải dễ hiểu, nhìn phát biết mình phải làm gì
+________________________________________
+🧩 TỔNG QUAN UI CHO NGƯỜI NỘP ĐƠN (APPLICANT UI)
+Bạn sẽ có 5 nhóm màn hình chính:
+1.	Dashboard – Danh sách hồ sơ
+2.	Tạo mới hồ sơ – Giai đoạn 0
+3.	Trang chi tiết hồ sơ – Stepper 6 giai đoạn
+4.	Màn hình sửa đổi hồ sơ (Amendment) – khi bị trả về
+5.	Thanh toán lệ phí – Giai đoạn 5
+________________________________________
+🔵 1. DASHBOARD (Danh Sách Hồ Sơ)
+A. Layout
+•	Thanh tìm kiếm (Tìm theo mã đơn hoặc tên sáng chế)
+•	Bộ lọc:
+o	Theo giai đoạn: 0–5
+o	Theo trạng thái: Pending, Required Amendment, Rejected, Done
+•	Nút tạo hồ sơ mới: [Nộp đơn mới]
+B. Bảng danh sách
+Mã đơn	Tên sáng chế	Loại	Giai đoạn hiện tại	Trạng thái	Hành động
+SC-001	Máy ép nhiệt	Sáng chế	Thẩm định hình thức	Cần sửa đổi	[Sửa]
+SC-002	Cảm biến môi trường	GPHI	Công bố đơn	Đang xử lý	[Xem]
+Hành động
+•	Nếu hồ sơ đang ở Amendment Required → nút [Cập nhật hồ sơ]
+•	Nếu hồ sơ tới Yêu cầu thẩm định nội dung → nút [Gửi yêu cầu TĐND]
+•	Nếu hồ sơ tới Nộp lệ phí → nút [Thanh toán]
+________________________________________
+🟢 2. GIAI ĐOẠN 0: SOẠN THẢO & NỘP ĐƠN (APPLICATION DRAFT)
+A. Form nhập liệu cơ bản
+(Trang này giống với quy trình nộp đơn ban đầu của bạn, nhưng mở rộng)
+Chia thành 3 tab:
+Tab 1 — Thông tin chung
+•	Tên sáng chế
+•	Loại hình: Sáng chế / GPHI
+•	Lĩnh vực kỹ thuật (IPC)
+•	Tác giả
+•	Chủ đơn
+Tab 2 — Tài liệu kỹ thuật đặc thù
+•	Loại đối tượng:
+o	Sản phẩm → Form hiển thị: cấu tạo, vật liệu, nguyên lý hoạt động
+o	Quy trình → Form hiển thị: bước 1 → bước n, sơ đồ quy trình
+•	Mô tả chi tiết
+•	Tóm tắt
+•	Yêu cầu bảo hộ (Claims)
+•	Hình vẽ / File upload
+Tab 3 — Xem lại (Review)
+•	Hiển thị bản preview PDF trước khi submit
+Nút hành động
+•	[Lưu nháp]
+•	[Nộp đơn] → chuyển sang Giai đoạn 1
+________________________________________
+🟡 3. TRANG CHI TIẾT HỒ SƠ (UI QUAN TRỌNG NHẤT)
+Trang này điều khiển mọi tương tác theo State Machine.
+A. Header
+Tên sáng chế + Mã đơn
+Ví dụ:
+Máy ép nhiệt tự động — SC-2024-0123
+________________________________________
+B. Thanh Stepper 6 giai đoạn
+Hiển thị ngang:
+1.	Soạn thảo (Draft)
+2.	Thẩm định hình thức
+3.	Công bố đơn
+4.	Yêu cầu TĐ nội dung
+5.	Thẩm định nội dung
+6.	Cấp bằng
+Stepper có 4 màu:
+•	🔵 Đang xử lý
+•	⚪ Chưa đến
+•	🟢 Đã hoàn thành
+•	🟠 Cần sửa đổi
+•	🔴 Từ chối
+________________________________________
+C. Alert Box (Hộp thông báo điều hướng hành động)
+Ví dụ theo từng stage:
+Stage 1 — Formaility Examination
+🔵 “Hồ sơ đang được thẩm định hình thức. Vui lòng chờ chuyên viên phản hồi.”
+Hoặc nếu cần sửa:
+🟠 “Cần sửa đổi: Hình vẽ không đúng quy chuẩn. Hạn chót: 20/12/2024.”
+Nút: [Sửa & Nộp lại]
+________________________________________
+Stage 3 — Substantive Examination Request
+🟢 “Đơn đã được công bố. Bạn cần gửi yêu cầu Thẩm định nội dung để tiếp tục.”
+Nút: [Gửi yêu cầu TĐND]
+________________________________________
+Stage 5 — Fee Payment
+🟢 “Hồ sơ đã được dự định cấp bằng. Vui lòng nộp lệ phí.”
+Nút: [Thanh toán Online]
+________________________________________
+D. Tabs nội dung chính
+Tab 1 — Thông tin chung (Read-only hoặc editable tùy trạng thái)
+•	Tên sáng chế
+•	Loại hình
+•	IPC
+•	Tác giả, chủ đơn
+Tab 2 — Tài liệu sáng chế
+•	Mô tả
+•	Tóm tắt
+•	Hình vẽ
+•	Claims (Rất quan trọng)
+•	Download bản PDF gốc
+Tab 3 — Hồ sơ phản hồi & yêu cầu sửa đổi
+Hiển thị theo dạng timeline:
+Ngày	Người xử lý	Sự kiện	Ghi chú
+10/10	User	Nộp đơn	—
+12/10	Reviewer A	Yêu cầu sửa đổi	Tóm tắt quá dài
+15/10	User	Nộp lại	—
+20/10	Reviewer A	Chấp nhận hình thức	—
+Tab 4 — Lịch sử thay đổi trạng thái (State Machine Log)
+Mỗi chuyển trạng thái một dòng.
+________________________________________
+🟠 4. MÀN HÌNH SỬA ĐỔI HỒ SƠ (AMENDMENT PAGE)
+Chỉ xuất hiện khi Reviewer yêu cầu sửa đổi.
+Layout:
+•	Header: “Sửa đổi hồ sơ — SC-001”
+•	Alert cam: “Lý do yêu cầu sửa: Tóm tắt quá dài”
+•	Các trường được mở khoá:
+o	Tóm tắt
+o	Mô tả chi tiết
+o	Claims
+o	File upload
+Nút:
+•	[Lưu]
+•	[Nộp lại cho thẩm định hình thức]
+________________________________________
+🟢 5. GIAI ĐOẠN 5 – THANH TOÁN LỆ PHÍ
+Trang đơn giản:
+Thông tin phí:
+•	Lệ phí cấp bằng
+•	Lệ phí đăng bạ
+•	Lệ phí công bố
+Phương thức thanh toán:
+•	Momo
+•	VNPay
+•	Banking
+Nút: [Thanh toán]
+Sau khi thanh toán:
+•	Hồ sơ chuyển sang trạng thái Grant Certificate
+•	Được phép tải về Bằng độc quyền (PDF) (nếu mô phỏng)
+________________________________________
+🎯 TÓM TẮT CÁC HÀNH ĐỘNG CHO MỖI GIAI ĐOẠN
+Giai đoạn	User nhìn thấy gì	User được phép làm gì
+0 Soạn thảo	Form nhập	Nộp đơn
+1 Thẩm định hình thức	Chờ / hoặc sửa đổi	Nếu yêu cầu sửa → Sửa + Nộp lại
+2 Công bố	Chỉ xem	Không làm gì
+3 Yêu cầu TĐND	Alert xanh	Gửi yêu cầu TĐND
+4 Thẩm định nội dung	Chờ / hoặc sửa đổi	Sửa claims + phản hồi
+5 Nộp phí	Thông báo phí	Thanh toán
+

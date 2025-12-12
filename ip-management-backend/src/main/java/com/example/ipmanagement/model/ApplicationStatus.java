@@ -1,0 +1,10 @@
+package com.example.ipmanagement.model;
+
+public enum ApplicationStatus {
+    DRAFTING_AND_FILING,
+    FORMALITY_EXAMINATION,
+    APPLICATION_PUBLICATION,
+    SUBSTANTIVE_EXAMINATION_REQUEST,
+    SUBSTANTIVE_EXAMINATION,
+    FEE_PAYMENT_AND_GRANT
+}

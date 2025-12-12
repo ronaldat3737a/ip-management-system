@@ -1,47 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getApplicationById, updateApplicationStatus, downloadFile } from '../services/api';
+import { useParams, Link } from 'react-router-dom';
+import { getApplicationById, updateApplicationStatus } from '../services/api';
+import Modal from './Modal';
 import '../styles/Buttons.css';
-import '../styles/Form.css'; // Re-use for back-link styles
+import '../styles/Form.css';
+import '../styles/App.css';
+import '../styles/ApplicationDetail.css';
 
-const detailContainerStyle = {
-    maxWidth: '800px',
-    margin: '2rem auto',
+const formatStatus = (status) => {
+  if (!status) return 'N/A';
+  return status.toLowerCase().replace(/_/g, ' ').replace(/(?: |\b)(\w)/g, (char) => char.toUpperCase());
 };
 
-const detailStyle = {
-    padding: '2rem',
-    background: '#fff',
-    borderRadius: '8px',
-    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
-};
-
-const sectionStyle = {
-    marginBottom: '2rem',
-};
-
-const fileListStyle = {
-    listStyle: 'none',
-    padding: 0,
-};
-
-const fileListItemStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px',
-    borderBottom: '1px solid #eee',
-};
-
+const STAGES = [
+  'DRAFTING_AND_FILING', 'FORMALITY_EXAMINATION', 'APPLICATION_PUBLICATION',
+  'SUBSTANTIVE_EXAMINATION_REQUEST', 'SUBSTANTIVE_EXAMINATION', 'FEE_PAYMENT_AND_GRANT'
+];
 
 const ApplicationDetail = ({ user }) => {
   const { id } = useParams();
-  const navigate = useNavigate();
+
+  // Component State
   const [application, setApplication] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [status, setStatus] = useState('');
+  const [statusChangeError, setStatusChangeError] = useState('');
+  
+  // Reviewer-specific state
+  const [adminTab, setAdminTab] = useState('dossier');
+  const [modalAction, setModalAction] = useState(null); // e.g., 'reject', 'requestInfo'
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     const fetchApplication = async () => {
@@ -49,104 +39,176 @@ const ApplicationDetail = ({ user }) => {
         const response = await getApplicationById(id);
         const fetchedApp = response.data;
         setApplication(fetchedApp);
-        setStatus(fetchedApp.status);
-
-        // Authorization check
         if (user.role === 'REVIEWER' || (user.role === 'USER' && fetchedApp.submittedByUsername === user.username)) {
-            setIsAuthorized(true);
+          setIsAuthorized(true);
         }
-
       } catch (err) {
         setError('Failed to fetch application details.');
-        console.error(err);
       } finally {
         setLoading(false);
       }
     };
-
-    if (user) {
-        fetchApplication();
-    }
+    if (user) fetchApplication();
   }, [id, user]);
 
-  const handleStatusUpdate = async (newStatus) => {
+  const handleStatusUpdate = async (newStatus, reason = '') => {
+    setStatusChangeError('');
     try {
-      const response = await updateApplicationStatus(id, newStatus);
+      const response = await updateApplicationStatus(id, { status: newStatus, rejectionReason: reason });
       setApplication(response.data);
-      setStatus(response.data.status);
+      setRejectionReason('');
+      setIsModalOpen(false);
+      setModalAction(null);
     } catch (err) {
-      setError('Failed to update status.');
-      console.error(err);
+      setStatusChangeError(`Failed to update status: ${err.response?.data?.message || err.message}`);
     }
   };
-
-  const handleFileDownload = async (file) => {
-    try {
-        await downloadFile(file.id, file.fileName);
-    } catch (err) {
-        setError(`Failed to download file ${file.fileName}.`);
-        console.error(err);
-    }
-  };
-
-  if (loading) return <p>Loading application details...</p>;
-  if (error) return <p style={{ color: 'red' }}>{error}</p>;
   
-  if (!isAuthorized && !loading) {
-    return <p style={{ color: 'red' }}>You are not authorized to view this application.</p>;
-  }
+  const openModal = (action) => {
+    setModalAction(action);
+    setIsModalOpen(true);
+  };
 
+  const renderReviewerActions = () => {
+    const status = application.status;
+    return (
+      <div className="action-panel">
+        <h4>Action Panel</h4>
+        {status === 'FORMALITY_EXAMINATION' && (
+          <>
+            <button className="button-success" onClick={() => handleStatusUpdate('APPLICATION_PUBLICATION')}>✔ Pass Formality Check</button>
+            <button className="button-warning" onClick={() => openModal('requestCorrection')}>❌ Request Correction</button>
+          </>
+        )}
+        {status === 'APPLICATION_PUBLICATION' && <button onClick={() => handleStatusUpdate('SUBSTANTIVE_EXAMINATION_REQUEST')}>📣 Publish Application</button>}
+        {status === 'SUBSTANTIVE_EXAMINATION_REQUEST' && <button onClick={() => handleStatusUpdate('SUBSTANTIVE_EXAMINATION')}>✔ Confirm Request</button>}
+        {status === 'SUBSTANTIVE_EXAMINATION' && (
+          <>
+            <button className="button-success" onClick={() => handleStatusUpdate('FEE_PAYMENT_AND_GRANT')}>✔ Pass Substantive Exam</button>
+            <button className="button-danger" onClick={() => openModal('reject')}>❌ Reject Application</button>
+          </>
+        )}
+        {status === 'FEE_PAYMENT_AND_GRANT' && <p>Waiting for user to pay the fee.</p>}
+        {status === 'DRAFTING_AND_FILING' && <p>Waiting for user to submit.</p>}
+      </div>
+    );
+  };
+
+  const renderUserActions = () => {
+    const status = application.status;
+     if (application.rejectionReason && status === 'DRAFTING_AND_FILING') {
+      return <Link to={`/applications/${id}/amend`} className="button-primary">✏️ Amend and Resubmit</Link>;
+    }
+    switch (status) {
+      case 'DRAFTING_AND_FILING':
+        return <button onClick={() => handleStatusUpdate('FORMALITY_EXAMINATION')}>Submit for Examination</button>;
+      case 'SUBSTANTIVE_EXAMINATION_REQUEST':
+        return <button onClick={() => handleStatusUpdate('SUBSTANTIVE_EXAMINATION')}>Activate Substantive Examination</button>;
+      case 'FEE_PAYMENT_AND_GRANT':
+        return <Link to={`/applications/${id}/payment`} className="button-success">Pay Fee & Receive Patent</Link>;
+      default:
+        return <p>No actions available at this stage. Please wait for the reviewer.</p>;
+    }
+  };
+
+  const renderModalContent = () => {
+    if (!modalAction) return null;
+
+    return (
+        <div>
+            <div className="form-group">
+                <label>Reason:</label>
+                <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    rows="4"
+                    style={{ width: '100%' }}
+                />
+            </div>
+            <button 
+                className="button-primary" 
+                onClick={() => handleStatusUpdate('DRAFTING_AND_FILING', rejectionReason)}
+                disabled={!rejectionReason}
+            >
+                Confirm & Send to User
+            </button>
+        </div>
+    );
+  };
+  
+  if (loading) return <p>Loading application details...</p>;
+  if (error) return <p className="error-text">{error}</p>;
+  if (!isAuthorized) return <p className="error-text">You are not authorized to view this application.</p>;
   if (!application) return <p>No application found.</p>;
 
   const isReviewer = user.role === 'REVIEWER';
+  const currentStatusIndex = STAGES.indexOf(application.status);
 
   return (
-    <div style={detailContainerStyle}>
-        <div className="back-link-container">
-            <button onClick={() => navigate(-1)} className="back-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                ← Back to List
-            </button>
+    <>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`Action: ${formatStatus(modalAction)}`}>
+        {renderModalContent()}
+      </Modal>
+
+      <div className="detail-header">
+        <div>
+          <h2>{application.title}</h2>
+          <p>ID: {application.id} | Submitted by: {application.submittedByUsername}</p>
         </div>
-        <div style={detailStyle}>
-            <h2>Application Details</h2>
-            
-            <div style={sectionStyle}>
-                <p><strong>ID:</strong> {application.id}</p>
-                <p><strong>Title:</strong> {application.title}</p>
-                <p><strong>Description:</strong> {application.description}</p>
-                <p><strong>Submitted By:</strong> {application.submittedByUsername}</p>
-                <p><strong>Current Status:</strong> <span style={{ fontWeight: 'bold', color: status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'orange' }}>{status}</span></p>
+        <div className={`status-badge ${application.status.toLowerCase()}`}>
+          {formatStatus(application.status)}
+        </div>
+      </div>
+      
+      <div className="workflow-container">
+        {STAGES.map((stage, index) => (
+          <div key={stage} className={`workflow-stage ${index === currentStatusIndex ? 'active' : ''} ${index < currentStatusIndex ? 'completed' : ''}`}>
+            <div className="workflow-dot"></div>
+            <div className="workflow-label">{formatStatus(stage)}</div>
+          </div>
+        ))}
+      </div>
+
+      {statusChangeError && <p className="error-text" style={{ textAlign: 'center' }}>{statusChangeError}</p>}
+      
+      {isReviewer ? (
+        <div className="reviewer-view">
+          {renderReviewerActions()}
+          <div className="detail-tabs">
+            <div className="tab-navigation">
+              <button onClick={() => setAdminTab('dossier')} className={adminTab === 'dossier' ? 'active' : ''}>Dossier</button>
+              <button onClick={() => setAdminTab('notes')} className={adminTab === 'notes' ? 'active' : ''}>Review Notes</button>
+              <button onClick={() => setAdminTab('history')} className={adminTab === 'history' ? 'active' : ''}>History</button>
             </div>
-
-            {application.files && application.files.length > 0 && (
-                <div style={sectionStyle}>
-                <h3>Attached Files</h3>
-                <ul style={fileListStyle}>
-                    {application.files.map((file) => (
-                    <li key={file.id} style={fileListItemStyle}>
-                        <span>{file.fileName}</span>
-                        <button onClick={() => handleFileDownload(file)}>Download</button>
-                    </li>
-                    ))}
-                </ul>
-                </div>
-            )}
-
-            {isReviewer && (
-                <div style={sectionStyle}>
-                <h3>Reviewer Actions</h3>
-                <div>
-                    <button onClick={() => handleStatusUpdate('APPROVED')} disabled={status === 'APPROVED'}>
-                    Approve
-                    </button>
-                    <button onClick={() => handleStatusUpdate('REJECTED')} disabled={status === 'REJECTED'} style={{ backgroundColor: '#dc3545' }}>
-                    Reject
-                    </button>
-                </div>
-                </div>
-            )}
+            <div className="tab-content">
+              {adminTab === 'dossier' && (
+                  <div>
+                    <h4>Application Dossier</h4>
+                    <p><strong>Description:</strong> {application.description}</p>
+                    {/* File list, etc. */}
+                  </div>
+              )}
+              {adminTab === 'notes' && <div><p>Internal review notes placeholder.</p></div>}
+              {adminTab === 'history' && <div><p>Application state history placeholder.</p></div>}
+            </div>
+          </div>
         </div>
-    </div>
+      ) : (
+        <div className="user-view">
+            <div className="detail-card">
+              <h3>Application Details</h3>
+              <p><strong>Description:</strong> {application.description}</p>
+              {application.rejectionReason && (
+                <div className="alert alert-warning"><strong>Reason for Amendment:</strong> {application.rejectionReason}</div>
+              )}
+            </div>
+            <div className="detail-card">
+                <h3>My Actions</h3>
+                {renderUserActions()}
+            </div>
+        </div>
+      )}
+    </>
   );
 };
 
